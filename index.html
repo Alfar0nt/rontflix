@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Stream - Personal Movie/TV App</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="container">
+    <h1>🎬 My Stream</h1>
+
+    <!-- Search Area -->
+    <div class="search-area">
+      <input type="text" id="searchInput" placeholder="Search for movies or TV shows..." />
+      <button id="searchBtn">Search</button>
+    </div>
+
+    <!-- API Selector -->
+    <div class="api-selector">
+      <label for="apiSelect">Viduki API:</label>
+      <select id="apiSelect">
+        <option value="1">API 1 (Multi Server)</option>
+        <option value="2">API 2 (Multi Language)</option>
+        <option value="3">API 3 (Multi Embeds)</option>
+        <option value="4">API 4 (Premium Embeds)</option>
+      </select>
+    </div>
+
+    <!-- Results Grid -->
+    <div id="resultsContainer" class="results-grid"></div>
+
+    <!-- Status Message -->
+    <div id="statusMessage" class="info-msg">Ready. Search for something!</div>
+  </div>
+
+  <!-- ===== POPUP PLAYER (Fullscreen overlay) ===== -->
+  <div id="playerPopup" class="player-popup">
+    <div class="player-popup-content">
+      <div class="player-popup-header">
+        <span id="playerTitle" class="player-title">Now Playing</span>
+        <button id="closePlayer" class="player-close-btn">✕</button>
+      </div>
+      <div class="player-wrapper">
+        <iframe id="playerIframe" allowfullscreen></iframe>
+      </div>
+      <div class="player-controls">
+        <button id="popupApiPrev" class="popup-api-btn">◄ Prev API</button>
+        <span id="popupApiInfo" class="popup-api-info">API 1</span>
+        <button id="popupApiNext" class="popup-api-btn">Next API ►</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== MODAL FOR TV SHOW EPISODE SELECTION ===== -->
+  <div id="episodeModal" class="modal">
+    <div class="modal-content">
+      <span class="modal-close">&times;</span>
+      <div id="modalBody">
+        <!-- Dynamically populated -->
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
