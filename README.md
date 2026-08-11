@@ -1,4 +1,4 @@
-# My Stream
+# r0ntflix
 
 A simple browser app that lets you search for movies and TV shows and play them.
 
