@@ -147,14 +147,28 @@ h1 {
     margin: 24px 0 4px;
 }
 
-.continue-title {
+.recommendations {
+    margin: 24px 0 4px;
+}
+
+.media-row {
+    margin-bottom: 28px;
+}
+
+.row-grid .movie-card {
+    flex: 0 0 160px;
+}
+
+.continue-title,
+.row-title {
     font-size: 1.3rem;
     font-weight: 600;
     color: #fff;
     margin-bottom: 12px;
 }
 
-.continue-grid {
+.continue-grid,
+.row-grid {
     display: flex;
     gap: 16px;
     overflow-x: auto;
@@ -163,16 +177,19 @@ h1 {
     scrollbar-color: #555 #222;
 }
 
-.continue-grid::-webkit-scrollbar {
+.continue-grid::-webkit-scrollbar,
+.row-grid::-webkit-scrollbar {
     height: 6px;
 }
 
-.continue-grid::-webkit-scrollbar-track {
+.continue-grid::-webkit-scrollbar-track,
+.row-grid::-webkit-scrollbar-track {
     background: #222;
     border-radius: 3px;
 }
 
-.continue-grid::-webkit-scrollbar-thumb {
+.continue-grid::-webkit-scrollbar-thumb,
+.row-grid::-webkit-scrollbar-thumb {
     background: #555;
     border-radius: 3px;
 }
@@ -280,6 +297,75 @@ h1 {
     text-align: center;
     padding: 40px;
     color: #888;
+}
+
+/* ===== EMPTY STATE ===== */
+.empty-state {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 60px 20px;
+    background: #1a1a1a;
+    border-radius: 8px;
+    border: 1px dashed #333;
+}
+
+.empty-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 8px;
+}
+
+.empty-sub {
+    color: #aaa;
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+/* ===== LOAD MORE ===== */
+.load-more-wrap {
+    display: flex;
+    justify-content: center;
+    margin-top: 24px;
+}
+
+.load-more-btn {
+    padding: 10px 28px;
+    background: #e50914;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.load-more-btn:hover:not(:disabled) {
+    background: #f40612;
+}
+
+.load-more-btn:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+
+/* ===== PLAYER META ===== */
+.player-meta {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    padding: 10px 24px;
+    background: #111;
+    border-top: 1px solid #333;
+}
+
+.player-rating {
+    color: #ffd700;
+    font-weight: 600;
+}
+
+.player-runtime {
+    color: #aaa;
 }
 
 /* ========================================== */
@@ -597,6 +683,10 @@ h1 {
     }
 
     .continue-card {
+        flex-basis: 130px;
+    }
+
+    .row-grid .movie-card {
         flex-basis: 130px;
     }
 
