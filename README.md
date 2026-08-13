@@ -14,4 +14,5 @@
 - [x] Show a "No results" empty state with a friendly suggestion instead of a plain error line.
 - [ ] Add a dark/light theme toggle, kept in local storage.
 - [x] Add paging or "Load more" on search results instead of a single page.
+- [x] Hide the homepage recommendations while the search box is focused or has text typed, so search results are shown clearly.
 - [ ] Add a simple watch history page listing everything played, sorted by last watched.

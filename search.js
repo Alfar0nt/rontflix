@@ -89,6 +89,15 @@ function updateLoadMore() {
 // ============================================
 // EVENT LISTENERS
 // ============================================
+function updateHomeVisibility() {
+    const searching = searchInput.value.trim().length > 0 || document.activeElement === searchInput;
+    recommendationsContainer.style.display = searching ? 'none' : '';
+}
+
+searchInput.addEventListener('focus', updateHomeVisibility);
+searchInput.addEventListener('blur', updateHomeVisibility);
+searchInput.addEventListener('input', updateHomeVisibility);
+
 searchInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') searchBtn.click();
 });
