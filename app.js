@@ -70,6 +70,7 @@ window.addEventListener('load', () => {
     }
 
     setStatus('Search for a movie or TV show to get started.', '');
+    initAuth();
     renderContinueWatching();
     loadRecommendations();
 });

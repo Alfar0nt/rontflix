@@ -14,6 +14,13 @@ const SESSION_COOKIE = 'token';
 const SESSION_TTL_SECONDS = 30 * 24 * 60 * 60; // 30 days
 
 export async function onRequest(context) {
+  // Only mark the cookie Secure when the connection is HTTPS.
+  // Overplain http (e.g. phone testing on a LAN) browsers refuse to
+  // store a Secure cookie, which breaks persisted login. Production on
+  // Cloudflare Pages is always HTTPS, so Secure is applied there.
+  const isSecure = new URL(context.request.url).protocol === 'https:';
+  context.data.secureCookie = isSecure;
+
   // -- CORS preflight (same-origin Pages frontend usually doesn't need this,
   //    but keep it for flexibility across subdomains) --
   if (context.request.method === 'OPTIONS') {
@@ -53,13 +60,17 @@ export async function onRequest(context) {
 }
 
 // -- shared cookie helpers --------------------------------------------------
+// `secure` is derived from the request scheme (see onRequest). Pass
+// context.data.secureCookie from each endpoint.
 
-export function sessionCookie(token, maxAge = SESSION_TTL_SECONDS) {
-  return `${SESSION_COOKIE}=${token}; HttpOnly; Path=/; Max-Age=${maxAge}; SameSite=Lax; Secure`;
+export function sessionCookie(token, maxAge = SESSION_TTL_SECONDS, secure = true) {
+  const s = secure ? '; Secure' : '';
+  return `${SESSION_COOKIE}=${token}; HttpOnly; Path=/; Max-Age=${maxAge}; SameSite=Lax${s}`;
 }
 
-export function clearCookie() {
-  return `${SESSION_COOKIE}=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax; Secure`;
+export function clearCookie(secure = true) {
+  const s = secure ? '; Secure' : '';
+  return `${SESSION_COOKIE}=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax${s}`;
 }
 
 function readCookie(header, name) {

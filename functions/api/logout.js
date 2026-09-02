@@ -11,6 +11,6 @@ export async function onRequestPost(context) {
 
   return new Response(null, {
     status: 204,
-    headers: { "Set-Cookie": clearCookie() },
+    headers: { "Set-Cookie": clearCookie(context.data.secureCookie) },
   });
 }

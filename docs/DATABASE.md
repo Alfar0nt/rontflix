@@ -193,7 +193,7 @@ export async function onRequest(context) {
 }
 ```
 
-> **Note on Cookies + Pages Functions:** Pages Functions run on your specified domain. The `Secure` flag requires HTTPS (Pages provides it). `SameSite=Lax` prevents CSRF for top-level navigation. If you deploy the frontend on a different subdomain than the API, you'll need permissive CORS and a shared cookie domain — simplest is to serve both from the same Pages domain. The auth endpoints below use the `sessionCookie()` / `clearCookie()` helpers exported from the **actual** `functions/_middleware.js`, which set a `token` cookie with `HttpOnly; Path=/; Max-Age; SameSite=Lax; Secure`.
+> **Note on Cookies + Pages Functions:** Pages Functions run on your specified domain. `SameSite=Lax` prevents CSRF for top-level navigation. If you deploy the frontend on a different subdomain than the API, you'll need permissive CORS and a shared cookie domain — simplest is to serve both from the same Pages domain. The auth endpoints use the `sessionCookie()` / `clearCookie()` helpers exported from **`functions/_middleware.js`**, which set a `token` cookie with `HttpOnly; Path=/; Max-Age; SameSite=Lax`. The `Secure` flag is applied **only over HTTPS** (`context.data.secureCookie`, derived from the request scheme). This keeps `Secure` in production (Cloudflare Pages is always HTTPS) while allowing the cookie to persist over plain-http LAN dev (e.g. testing from a phone on your local network), where browsers otherwise refuse to store a `Secure` cookie.
 
 ---
 

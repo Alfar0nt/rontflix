@@ -31,6 +31,11 @@ const modal = document.getElementById('episodeModal');
 const modalBody = document.getElementById('modalBody');
 const modalClose = document.querySelector('.modal-close');
 
+const authArea = document.getElementById('authArea');
+const authModal = document.getElementById('authModal');
+const authBody = document.getElementById('authBody');
+const authClose = document.getElementById('authClose');
+
 // ============================================
 // HELPERS
 // ============================================

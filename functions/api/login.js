@@ -38,6 +38,6 @@ export async function onRequestPost(context) {
 
   return Response.json(
     { user: { id: user.id, email: user.email, username: user.username } },
-    { status: 200, headers: { "Set-Cookie": sessionCookie(token, TOKEN_TTL) } }
+    { status: 200, headers: { "Set-Cookie": sessionCookie(token, TOKEN_TTL, context.data.secureCookie) } }
   );
 }

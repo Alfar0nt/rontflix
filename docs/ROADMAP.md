@@ -40,12 +40,12 @@ Small, client-side-only enhancements. They do not require a backend.
 - [x] Rate-limit login/register attempts — `auth_attempts` table, 5-fail lockout/429 (migration `0002_auth_attempts.sql`)
 
 ### Phase 3 — Auth UI (Register + Login)
-- [ ] Login form modal/screen with email + password (labels, show/hide password toggle, `autocomplete`, loading->success/error feedback)
-- [ ] Register form modal/screen with email, username, password + confirm
-- [ ] Toggle between login/register, accessible (labels, aria-live errors, focus management, keyboard friendly)
-- [ ] "Logged in" UI state — show user's name / avatar in header with a logout control
-- [ ] Persist login across reload (session token in httpOnly cookie via Secure settings, or localStorage fallback with documented tradeoff)
-- [ ] Prevent access to watchlist/profile when logged out (guard UI)
+- [x] Login form modal/screen with email + password (labels, show/hide password toggle, `autocomplete`, loading->success/error feedback)
+- [x] Register form modal/screen with email, username, password + confirm
+- [x] Toggle between login/register, accessible (labels, aria-live errors, focus management, keyboard friendly)
+- [x] "Logged in" UI state — show user's name / avatar in header with a logout control
+- [x] Persist login across reload (session token in httpOnly cookie via Secure settings)
+- [ ] Prevent access to watchlist/profile when logged out (guard UI) — pending watchlist/profile UI (Phase 4)
 
 ### Phase 4 — Watchlist
 - [ ] **Add to watchlist endpoint** (`/api/watchlist`, POST) — store tmdb_id + media_type + title + poster per user

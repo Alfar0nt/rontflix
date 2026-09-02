@@ -54,6 +54,6 @@ export async function onRequestPost(context) {
 
   return Response.json(
     { user: { id: userId, email, username } },
-    { status: 201, headers: { "Set-Cookie": sessionCookie(token, TOKEN_TTL) } }
+    { status: 201, headers: { "Set-Cookie": sessionCookie(token, TOKEN_TTL, context.data.secureCookie) } }
   );
 }

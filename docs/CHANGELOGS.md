@@ -12,6 +12,42 @@ Future work (pending UI features + the Cloudflare D1 Database & Accounts roadmap
 
 ---
 
+## [0.0.12] - 2026-09-02
+
+Bugfix: persisted login over plain-http LAN (phone testing).
+
+### Fixed
+- Auth cookie was hard-coded `Secure`, which browsers refuse to store over plain `http://`. On `localhost` it worked (browsers treat it as a secure context), but on a phone hitting `http://<LAN-IP>:<port>` the cookie was dropped and the session was lost on reload.
+- `functions/_middleware.js` now derives `secure` from the request scheme (`https:` → `Secure`, http/LAN → no `Secure`). Production on Cloudflare Pages is always HTTPS, so `Secure` still applies there; local/LAN http dev now persists the session.
+
+### Changed
+- `functions/_middleware.js` — `sessionCookie()`/`clearCookie()` accept a `secure` flag; `onRequest` sets `context.data.secureCookie`
+- `functions/api/register.js`, `login.js`, `logout.js` — pass `context.data.secureCookie`
+
+---
+
+## [0.0.11] - 2026-09-02
+
+Phase 3 of the Database + Accounts roadmap — Auth UI (register + login forms in the app).
+
+### Added
+- **`auth.js`** — frontend auth layer: thin same-origin API wrapper (`credentials: 'include'`), `currentUser` state, `register`/`login`/`logout`/`checkSession`, header auth rendering (Signed-in username/avatar + Log out, or a Sign in button), and the login/register modal with toggle
+- **Auth modal** — reusable sign-in/sign-up dialog (labels, show/hide password toggle, `autocomplete`, password confirm on register)
+- **`style.css`** — auth area (avatar chip, sign-in/log-out buttons) + auth modal form styles (fields, password toggle, messages, submit)
+- Header shows the signed-in user's username + avatar with a Log out control, or a Sign in button when logged out
+
+### Changed
+- `index.html` — added `#authArea` (header) and `#authModal`; `auth.js` loaded after `ui.js` in the dependency-order script chain
+- `ui.js` — added DOM refs for the auth area/modal
+- `app.js` — calls `initAuth()` on `window.load`
+
+### Verified
+- Page serves the auth markup and loads `auth.js`/`style.css` (200)
+- Session persists across reloads: register sets an `HttpOnly` cookie that is auto-sent (via the browser, `credentials:'include'`), and `/api/me` resolves the logged-in user from it
+- Escape key and backdrop-click close the modal; focus returns to the opener
+
+---
+
 ## [0.0.10] - 2026-09-02
 
 Phase 2 of the Database + Accounts roadmap — Authentication (register, login, logout, session check).

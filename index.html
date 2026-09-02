@@ -25,6 +25,9 @@
         </svg>
         <span>r0ntflix</span>
       </h1>
+      <div id="authArea" class="auth-area">
+        <!-- Populated by auth.js: signed-in user menu or Sign in button -->
+      </div>
     </header>
 
     <main id="mainContent">
@@ -94,6 +97,16 @@
     </div>
   </div>
 
+  <!-- ===== AUTH MODAL (Login / Register) ===== -->
+  <div id="authModal" class="modal" role="dialog" aria-modal="true" aria-label="Sign in or create an account">
+    <div class="modal-content auth-content">
+      <button class="modal-close" id="authClose" aria-label="Close sign-in dialog">&times;</button>
+      <div id="authBody">
+        <!-- Populated by auth.js: login or register form -->
+      </div>
+    </div>
+  </div>
+
   <!-- ===== MODAL FOR TV SHOW EPISODE SELECTION ===== -->
   <div id="episodeModal" class="modal" role="dialog" aria-modal="true" aria-label="Select episode">
     <div class="modal-content">
@@ -107,6 +120,7 @@
   <script src="config.js"></script>
   <script src="tmdb.js"></script>
   <script src="ui.js"></script>
+  <script src="auth.js"></script>
   <script src="continue.js"></script>
   <script src="player.js"></script>
   <script src="episodes.js"></script>
