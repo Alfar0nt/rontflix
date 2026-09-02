@@ -7,11 +7,6 @@ let pendingMediaData = null;
 
 const flushProgress = throttle(() => {
     if (!pendingMediaData) return;
-    try {
-        localStorage.setItem('vidukinet-Progress', JSON.stringify(pendingMediaData));
-    } catch (e) {
-        console.warn('Could not save progress:', e);
-    }
 
     if (currentMedia && currentMedia.id) {
         const progress = extractProgress(pendingMediaData, currentMedia);
@@ -64,6 +59,13 @@ apiSelect.addEventListener('change', () => {
 // INITIALIZATION
 // ============================================
 window.addEventListener('load', () => {
+    // Continue Watching is server-side only now. Drop any stale guest data
+    // previously stored under these keys by older versions.
+    try {
+        localStorage.removeItem('vidukinet-ContinueWatching');
+        localStorage.removeItem('vidukinet-Progress');
+    } catch (e) { /* ignore */ }
+
     const savedApi = localStorage.getItem(API_SELECT_KEY);
     if (savedApi && savedApi >= '1' && savedApi <= '4') {
         apiSelect.value = savedApi;
@@ -74,6 +76,6 @@ window.addEventListener('load', () => {
     // NOTE: initWatchlist() is intentionally NOT called here. auth.js owns it
     // and triggers it only after checkSession() resolves, so currentUser is
     // correct before the D1 watchlist is fetched (avoids a stale logged-out guard).
-    renderContinueWatching();
+    loadContinueWatching();
     loadRecommendations();
 });

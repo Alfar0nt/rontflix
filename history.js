@@ -1,7 +1,7 @@
 // ============================================
 // WATCH HISTORY — D1-backed, per logged-in user
 // Every played item, sorted by most recently watched.
-// Shown only when logged in (guarded UI).
+// Rendered on the Profile page (Phase 7), shown only when signed in.
 // ============================================
 
 function getHistoryUser() {
@@ -12,16 +12,14 @@ function historyKey(row) {
     return `${row.media_type}-${row.tmdb_id}-${row.season || 0}-${row.episode || 0}`;
 }
 
-// Fetch the user's history from D1 and render it.
+// Fetch the user's history from D1 and render it into the profile page container.
 async function loadHistory() {
     const user = getHistoryUser();
-    const section = document.getElementById('historySection');
-    const container = document.getElementById('historyContainer');
-    if (!section || !container) return;
+    const container = document.getElementById('profileHistoryContainer');
+    if (!container) return;
 
     // Guard: only show history for a signed-in user.
     if (!user) {
-        section.style.display = 'none';
         container.innerHTML = '';
         return;
     }
@@ -30,7 +28,6 @@ async function loadHistory() {
         const res = await api('/api/history');
         const items = (res?.items || []).slice(0, 20);
 
-        section.style.display = 'block';
         container.innerHTML = items.map(row => {
             const poster = row.poster_path ? `${IMG_BASE}${row.poster_path}` : POSTER_PLACEHOLDER;
             const safeTitle = escapeHtml(row.title);
@@ -52,13 +49,11 @@ async function loadHistory() {
         bindCardEvents(container);
 
         if (items.length === 0) {
-            section.style.display = 'none';
-            container.innerHTML = '';
+            container.innerHTML = '<p class="profile-empty">Nothing watched yet.</p>';
         }
     } catch (err) {
         console.warn('Could not load watch history:', err);
-        section.style.display = 'none';
-        container.innerHTML = '';
+        container.innerHTML = '<p class="profile-empty">Could not load watch history.</p>';
     }
 }
 

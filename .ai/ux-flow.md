@@ -12,7 +12,7 @@
 4. After `checkSession()` resolves (auth.js), the app:
    - Calls `initWatchlist()` — D1-backed watchlist row (or sign-in guard)
    - Calls `initHistory()` — D1-backed Watch History row
-   - Calls `loadContinueWatching()` — imports local → D1 then pulls D1 → local, renders Continue Watching
+   - Calls `loadContinueWatching()` — pulls D1 continue watching into memory, renders (only when signed in)
 
 ## Auth Session
 
@@ -65,8 +65,8 @@ User clicks a card (or presses Enter/Space on a focused card)
   │   ├─ Calls loadPlayerMeta() — fetches rating + runtime from TMDB
   │   └─ Creates/updates Continue Watching entry
   ├─ During playback, Viduki posts messages to parent window:
-  │   ├─ MEDIA_DATA → throttled to localStorage every 2s
-  │   │   └─ If progress >= 95% → removes from Continue Watching
+  │   ├─ MEDIA_DATA → throttled; mirrors progress to server Continue Watching (D1) only
+  │   │   └─ If progress >= 95% → removes from Continue Watching (D1)
   │   └─ viduki:all-servers-failed → auto-switches to next API variant
   └─ User closes player (Esc / X button / click outside)
       ├─ Clears iframe src
@@ -93,17 +93,17 @@ Two layers now exist:
 ### localStorage (client-only, not synced between devices)
 | Key | Purpose |
 |---|---|
-| `vidukinet-ContinueWatching` | In-progress media entries (per device/browser) |
 | `vidukinet-SelectedApi` | Last selected Viduki API variant (1-4) |
 | `vidukinet-TMDBCache` | Cached TMDB responses with timestamps |
-| `vidukinet-Progress` | Raw progress data from Viduki `postMessage` |
+
+**Continue Watching is NOT stored in localStorage** — it is D1-only and per signed-in account.
 
 ### Cloudflare D1 (server-side, per logged-in account, cross-device)
 - `users` / `sessions` — auth (via Cloudflare Pages Functions + D1)
 - `watchlist` — saved titles (`/api/watchlist` GET/POST/DELETE), rendered in the "My Watchlist" row when logged in
-- `continue_watching` — resume/progress mirrored from localStorage (`/api/continue` on progress ticks + remove; `/api/import` on login sync)
+- `continue_watching` — **resume/progress lives here exclusively** (`/api/continue` on progress ticks + remove); rendered only for signed-in users. It is fetched on login (`loadContinueWatching()`) and cleared/hidden on logout. Guests are not tracked.
 - `watch_history` — every played item (`/api/history` POST on play + GET), rendered in the "Watch History" row when logged in
-- localStorage is always the render source (offline/degraded mode); D1 writes are gated behind a signed-in user
+- All D1-backed rows are gated behind a signed-in user; there is no offline/local fallback for Continue Watching.
 
 ## External Dependencies (Runtime)
 

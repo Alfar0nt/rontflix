@@ -1,33 +1,25 @@
 // ============================================
 // CONTINUE WATCHING
-// localStorage is always the render source (offline/degraded mode).
-// When logged in, entries are also mirrored to D1 (per-user, cross-device):
-//   - progress ticks → POST /api/continue  (app.js flushProgress)
-//   - remove        → DELETE /api/continue
-//   - on login      → loadContinueWatching() imports local→D1 then pulls D1→local
+// Server-side only, per signed-in user.
+//
+// Continue Watching state lives in D1 (/api/continue), never localStorage:
+//   - shown (and usable) only when a user is logged in
+//   - progress ticks → POST /api/continue   (app.js flushProgress)
+//   - remove           → DELETE /api/continue
+//   - on login/load    → loadContinueWatching() pulls D1 rows into memory
+//   - on logout        → the in-memory list is cleared and the section hides
+//
+// Because the data is per logged-in user, it disappears on logout and comes
+// back when the same account signs in (and on any other device).
 // ============================================
 
-function getContinueData() {
-    try {
-        return JSON.parse(localStorage.getItem(CONTINUE_KEY) || '{}') || {};
-    } catch (e) {
-        return {};
-    }
-}
-
-function saveContinueData(data) {
-    try {
-        localStorage.setItem(CONTINUE_KEY, JSON.stringify(data));
-    } catch (e) {
-        console.warn('Could not save continue watching:', e);
-    }
-}
+let continueEntries = []; // in-memory, seeded from D1 when signed in
 
 function getCurrentUser() {
     return typeof currentUser !== 'undefined' ? currentUser : null;
 }
 
-// Map a D1 continue_watching row into the localStorage entry shape.
+// Map a D1 continue_watching row into the card entry shape.
 function serverRowToEntry(row) {
     return {
         id: row.tmdb_id,
@@ -42,7 +34,7 @@ function serverRowToEntry(row) {
     };
 }
 
-// Map a localStorage entry into a D1 import/continue-write item.
+// Convert an entry into the payload /api/continue expects.
 function entryToDbItem(entry) {
     return {
         tmdb_id: entry.id,
@@ -56,71 +48,30 @@ function entryToDbItem(entry) {
     };
 }
 
-// Push the current localStorage continue data to D1 (used on login).
-async function importContinueToServer() {
-    const user = getCurrentUser();
-    const data = getContinueData();
-    const entries = Object.values(data);
-    if (!user || entries.length === 0) return 0;
-    try {
-        const res = await api('/api/import', {
-            method: 'POST',
-            body: JSON.stringify({ items: entries.map(entryToDbItem) }),
-        });
-        return res?.imported || 0;
-    } catch (err) {
-        console.warn('Import continue watching to D1 failed:', err);
-        return 0;
-    }
-}
-
-// Load the server-side continue watching into localStorage (when logged in).
-// Local entries are imported first so nothing is lost; then D1 is authoritative.
+// Fetch the signed-in user's continue watching from D1 into memory and render.
 async function loadContinueWatching() {
     const user = getCurrentUser();
-    if (!user) {
-        renderContinueWatching();
-        return;
-    }
+    continueEntries = [];
 
-    await importContinueToServer();
-
-    try {
-        const res = await api('/api/continue');
-        const items = (res?.items || []).slice(0, 12);
-
-        const data = {};
-        for (const row of items) {
-            const entry = serverRowToEntry(row);
-            data[`${entry.type}-${entry.id}`] = entry;
+    if (user) {
+        try {
+            const res = await api('/api/continue');
+            continueEntries = (res?.items || []).map(serverRowToEntry).slice(0, 12);
+        } catch (err) {
+            console.warn('Could not load continue watching from server:', err);
         }
-
-        // Keep any local-only entries that the server doesn't have yet
-        // (e.g. a just-started title queued on this device before sync).
-        const serverKeys = new Set(items.map(r => `${r.media_type}-${r.tmdb_id}`));
-        const local = getContinueData();
-        for (const [key, entry] of Object.entries(local)) {
-            if (!serverKeys.has(key)) {
-                data[key] = entry;
-            }
-        }
-
-        saveContinueData(data);
-    } catch (err) {
-        console.warn('Could not load continue watching from server:', err);
     }
 
     renderContinueWatching();
 }
 
+// Record/update a media entry in Continue Watching (D1). Guests are not tracked.
 function updateContinueEntry(media, progress) {
     if (!media || !media.id || !media.type) return;
+    if (!getCurrentUser()) return;
 
-    const data = getContinueData();
-    const key = `${media.type}-${media.id}`;
-    const existing = data[key] || {};
-
-    data[key] = {
+    const existing = continueEntries.find(e => e.id === media.id && e.type === media.type) || {};
+    const entry = {
         id: media.id,
         type: media.type,
         title: media.title || existing.title || 'Untitled',
@@ -132,31 +83,28 @@ function updateContinueEntry(media, progress) {
         progress: progress || existing.progress || null
     };
 
-    saveContinueData(data);
-    renderContinueWatching();
-
-    if (getCurrentUser()) {
-        const item = entryToDbItem(data[key]);
-        api('/api/continue', {
-            method: 'POST',
-            body: JSON.stringify(item),
-        }).catch(err => console.warn('Could not sync progress to server:', err));
-    }
+    api('/api/continue', {
+        method: 'POST',
+        body: JSON.stringify(entryToDbItem(entry)),
+    })
+        .then(() => {
+            // Refresh from the server so the list reflects what's stored.
+            return loadContinueWatching();
+        })
+        .catch(err => console.warn('Could not sync progress to server:', err));
 }
 
+// Remove a media entry from Continue Watching (D1). Guests are not tracked.
 function removeContinueEntry(id, type, season, episode) {
-    const data = getContinueData();
-    delete data[`${type}-${id}`];
-    saveContinueData(data);
-    renderContinueWatching();
+    if (!getCurrentUser()) return;
 
-    if (getCurrentUser()) {
-        const qs = new URLSearchParams({ tmdb_id: id, media_type: type });
-        if (season) qs.set('season', season);
-        if (episode) qs.set('episode', episode);
-        api(`/api/continue?${qs.toString()}`, { method: 'DELETE' })
-            .catch(err => console.warn('Could not remove continue entry on server:', err));
-    }
+    const qs = new URLSearchParams({ tmdb_id: id, media_type: type });
+    if (season) qs.set('season', season);
+    if (episode) qs.set('episode', episode);
+
+    api(`/api/continue?${qs.toString()}`, { method: 'DELETE' })
+        .then(() => loadContinueWatching())
+        .catch(err => console.warn('Could not remove continue entry on server:', err));
 }
 
 function continueProgressPercent(entry) {
@@ -183,9 +131,10 @@ function extractProgress(mediaData, media) {
     return null;
 }
 
+// Render the in-memory continue watching list (only when a user is signed in).
 function renderContinueWatching() {
-    const data = getContinueData();
-    const entries = Object.values(data).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+    const user = getCurrentUser();
+    const entries = user ? [...continueEntries].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)) : [];
 
     if (entries.length === 0) {
         continueSection.style.display = 'none';
@@ -213,6 +162,27 @@ function renderContinueWatching() {
         </article>
         `;
     }).join('');
+}
+
+// ============================================
+// Per-episode progress for the season picker.
+// Sourced from the (server-backed) continue watching state, so it is only
+// populated for signed-in users — never from stray localStorage.
+// Returns a map in the shape: { [tmdbId]: { show_progress: { "sXeY": { progress: {watched,duration} } } } }
+// ============================================
+function getEpisodeProgressMap() {
+    const map = {};
+    for (const e of continueEntries) {
+        if (e.type !== 'tv' || !e.season || !e.episode) continue;
+        const key = `s${e.season}e${e.episode}`;
+        const progress = e.progress && typeof e.progress.watched === 'number' && typeof e.progress.duration === 'number'
+            ? { progress: e.progress }
+            : null;
+        if (!progress) continue;
+        map[e.id] = map[e.id] || { show_progress: {} };
+        map[e.id].show_progress[key] = progress;
+    }
+    return map;
 }
 
 function playContinueCard(card) {

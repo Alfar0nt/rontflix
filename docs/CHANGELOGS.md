@@ -8,9 +8,71 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) conventions w
 
 ## [Unreleased] - Planned
 
-**Phase 7 — Profile** (planned, not yet implemented): a signed-in user can open a Profile page to view and customize their **profile picture/avatar, username, email, and password** (new endpoints `PATCH/PUT /api/profile` + `POST /api/profile/password`). The profile is only accessible when signed in (guard). **Watch History moves onto the Profile page** — the homepage "Watch History" row is removed and re-rendered on the profile instead.
+**Phase 8 — Platform Migration to Vercel + Supabase** (planning-only, **not to be executed**): move hosting from **Cloudflare Pages** to **Vercel** and the database from **Cloudflare D1 (SQLite)** to **Supabase (PostgreSQL)**. The full phased, step-by-step task plan (schema + data migration, auth strategy decision, endpoint porting, DNS/cutover, rollback) is documented in **`docs/migration-deployement.md`**. No migration steps run without explicit approval; Cloudflare + D1 stay live for parity/rollback until Phase 8 cleanup.
 
-Other future work (pending UI features + remaining Database & Accounts phases) is tracked in **`docs/ROADMAP.md`**.
+Other future work (pending UI features + remaining phases) is tracked in **`docs/ROADMAP.md`**.
+
+---
+
+## [0.0.19] - 2026-09-02
+
+Continue Watching is now **server-side (D1) only**, tied to the signed-in account — it is no longer persisted to localStorage on the device. It appears when a user is signed in and disappears on logout.
+
+### Changed
+- `continue.js` rewritten: the local (device) Continue Watching list was removed. Continue Watching state now lives entirely in D1 (`/api/continue`) and is held in memory only:
+  - **Shown only when signed in** — `renderContinueWatching()` renders nothing (and hides the section) for guests.
+  - **On login / page load** → `loadContinueWatching()` pulls the account's rows from D1.
+  - **On logout** → the in-memory list is cleared and the section hides (`loadContinueWatching()` re-run in `auth.js`).
+  - Progress saves (`POST /api/continue`) and removes (`DELETE /api/continue`) go straight to the server, never to localStorage.
+  - Guests are not tracked at all (`updateContinueEntry`/`removeContinueEntry` are no-ops when logged out).
+- `app.js` no longer writes the raw Viduki progress to `vidukinet-Progress`; the throttled flush only mirrors progress to the server via `updateContinueEntry()`. On load it also removes any stale `vidukinet-ContinueWatching` / `vidukinet-Progress` keys left by older versions.
+- `config.js` — removed the unused `CONTINUE_KEY` constant.
+- `episodes.js` — the season/episode picker progress badges now read from the server-backed continue watching state (`getEpisodeProgressMap()` in `continue.js`) instead of localStorage; like the Continue Watching row, they are only populated for signed-in users.
+- `auth.js` — logout (and the fallback "clear local session" path) now refreshes continue watching so the row disappears immediately.
+
+### Verified
+- Server-side lifecycle via `wrangler pages dev`: register → add progress → `GET /api/continue` returns the entry; logout → old cookie returns `401` (guest path hides the row); re-login → the same entry reappears from D1. A second user sees an empty list (per-user isolation). No localStorage continues to be written.
+
+---
+
+## [0.0.18] - 2026-09-02
+
+Bugfix: profile modal content was top-cropped on mobile.
+
+### Fixed
+- The modal content was vertically centered with `align-items: center` on `.modal.show`. When the centered content was taller than the visible viewport (e.g. the profile modal on a short mobile screen / browser URL-bar height), the **top of the profile content (heading + avatar area) was clipped above the view and unreachable** because only the inner content box scrolled, not the overlay.
+- Changed modal centering from flex `align-items: center`/`justify-content: center` to `margin: auto` on `.modal-content`, and made the `.modal` overlay itself `overflow-y: auto`. The modal now centers when it fits and, when taller than the viewport, stays pinned to the top with the overlay scrollable — so the profile top (Profile heading, avatar, username/email) is always reachable, including on mobile.
+
+### Verified
+- Manual check of the `.modal`/`.modal-content` spacing model: `.modal.show { display: flex }` + `.modal-content { margin: auto }` + `.modal { overflow-y: auto }`. Content taller than the viewport no longer clips its top edge; short content still centers.
+
+---
+
+## [0.0.17] - 2026-09-02
+
+**Phase 7 — Profile.** A signed-in user can now open a Profile screen from the header to view and edit their avatar, username, email, and password, and to browse their watch history.
+
+### Added
+- **Profile modal** — new `profile.js` frontend module (opened from the header username/avatar button). Shows the user's avatar, username and email, and lets them:
+  - Change **avatar** — pick from 10 named color-initial presets (red/orange/amber/green/teal/blue/indigo/violet/pink/slate) or paste a custom image URL; "Use default" reverts to the initial avatar.
+  - Edit **username** and **email**.
+  - Change **password** (requires the current password; new password verified + length-checked client- and server-side).
+- **Backend endpoints**:
+  - `PATCH /api/profile` (`functions/api/profile.js`) — validate + update username/email/avatar_url; enforces email format + uniqueness (conflict → 409); rejects `javascript:`/`data:` avatar values (only allows `preset:<name>` or `http(s)` URLs); **rotates the session cookie on email change** and returns a fresh `Set-Cookie`.
+  - `POST /api/profile/password` (`functions/api/profile/password.js`) — verifies the current password (401 if wrong) before updating to the new PBKDF2 hash.
+- **`users.avatar_url` column** — migration `0005_avatar.sql` (applied to local + remote D1). `avatar_url` holds either `NULL`, `preset:<name>`, or an image URL. Included in `/api/me`, register, login, and the auth middleware user object.
+- **Watch History moved onto the Profile page** — the homepage "Watch History" row was removed from `index.html`; `history.js` now renders history inside the profile modal (`#profileHistoryContainer`).
+
+### Changed
+- Header auth area: the username/avatar now renders as a **profile button** that opens the profile modal (avatar uses the new color-preset/system, consistent across header + profile).
+- `auth.js` `renderAuthArea()` uses the shared `renderAvatar()` (from `profile.js`).
+
+### Verified (manual e2e against local `wrangler pages dev`)
+- Register/login `/api/me` include `avatar_url`.
+- `PATCH /api/profile`: change username + preset avatar (200); invalid `javascript:` avatar rejected (saved as prior value); short username (400); bad email (400); duplicate email (409); custom image URL (200).
+- Email change returned a new `Set-Cookie` and invalidated the old session token.
+- `POST /api/profile/password`: wrong current (401), short new (400), success (200); old password no longer works, new password logs in.
+- Logged-out `PATCH`/password → 401.
 
 ---
 

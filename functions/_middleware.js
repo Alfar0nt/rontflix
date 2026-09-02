@@ -44,7 +44,7 @@ export async function onRequest(context) {
   if (token && context.env.DB) {
     try {
       const session = await context.env.DB.prepare(
-        `SELECT s.user_id AS id, u.email, u.username
+        `SELECT s.user_id AS id, u.email, u.username, u.avatar_url
          FROM sessions s
          JOIN users u ON u.id = s.user_id
          WHERE s.token = ? AND s.expires_at > unixepoch()`

@@ -43,6 +43,8 @@ async function logout() {
     renderAuthArea();
     if (typeof initWatchlist === 'function') initWatchlist();
     if (typeof initHistory === 'function') initHistory();
+    // Continue Watching is server-side only — clear it + hide on logout.
+    if (typeof loadContinueWatching === 'function') loadContinueWatching();
 }
 
 async function checkSession() {
@@ -63,12 +65,16 @@ function renderAuthArea() {
 
     if (currentUser) {
         authArea.innerHTML = `
-        <div class="auth-user" aria-label="Signed in as ${escapeHtml(currentUser.username)}">
-          <span class="auth-avatar" aria-hidden="true">${escapeHtml(firstLetter(currentUser.username))}</span>
-          <span class="auth-username">${escapeHtml(currentUser.username)}</span>
+        <div class="auth-user">
+          <button type="button" class="auth-profile-btn" id="profileBtn" aria-label="Open profile for ${escapeHtml(currentUser.username)}">
+            ${typeof renderAvatar === 'function' ? renderAvatar(currentUser, 'auth-avatar') : `<span class="avatar auth-avatar avatar-preset-slate">${escapeHtml(firstLetter(currentUser.username))}</span>`}
+            <span class="auth-username">${escapeHtml(currentUser.username)}</span>
+          </button>
           <button type="button" class="auth-logout-btn" id="logoutBtn">Log out</button>
         </div>`;
 
+        const profileBtn = document.getElementById('profileBtn');
+        if (profileBtn) profileBtn.addEventListener('click', () => openProfile());
         const logoutBtn = document.getElementById('logoutBtn');
         if (logoutBtn) logoutBtn.addEventListener('click', onLogout);
     } else {
@@ -92,6 +98,7 @@ async function onLogout() {
         // Even if the server call fails, clear local session state.
         currentUser = null;
         renderAuthArea();
+        if (typeof loadContinueWatching === 'function') loadContinueWatching();
         setStatus('Signed out (session may not have cleared).', 'error');
     }
 }
@@ -265,6 +272,8 @@ async function handleAuthSubmit(mode) {
         // Refresh the D1-backed watchlist for the new session.
         if (typeof initWatchlist === 'function') initWatchlist();
         if (typeof initHistory === 'function') initHistory();
+        // Load Continue Watching for the new session so it appears immediately.
+        if (typeof loadContinueWatching === 'function') loadContinueWatching();
     } catch (err) {
         setAuthMsg(err.message || 'Something went wrong.', 'error');
         setAuthLoading(false);

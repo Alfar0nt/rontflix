@@ -4,6 +4,10 @@ Tracks completed work. Future work lives in `docs/ROADMAP.md`; shipped changes a
 
 ## Completed
 
+- [x] **Continue Watching is now D1-only (0.0.19)** — removed localStorage persistence (`vidukinet-ContinueWatching`/`vidukinet-Progress`). Continue Watching lives entirely in `/api/continue` and an in-memory list: shown only when signed in, loaded on login (`loadContinueWatching()`), cleared + hidden on logout (auth.js). Guests are not tracked. `app.js` no longer writes raw progress to localStorage (and clears stale keys on load); `config.js` `CONTINUE_KEY` removed; `episodes.js` season-picker progress badges now source from the server-backed map (`getEpisodeProgressMap()`) instead of localStorage. Verified via `wrangler pages dev`: register→progress→GET; logout→401 (row hidden); re-login→same entry returns; second user sees empty.
+
+- [x] **Bugfix (0.0.18) — profile modal top-cropped on mobile** — the profile modal (and other centered modals) vertically centered via flex `align-items:center`, which clipped the top of content taller than the viewport on mobile. Changed centering to `margin:auto` on `.modal-content` and made the `.modal` overlay `overflow-y:auto`, so a too-tall modal pins to the top and scrolls (profile heading/avatar always reachable) while short content still centers.
+
 - [x] Continue Watching — local persistence, progress badges, auto-remove at 95%
 - [x] Homepage recommendations — 4 TMDB-powered rows (Popular, Just Released, Popular Movies, Popular TV)
 - [x] Lazy rendering — last 2 recommendation rows use `IntersectionObserver`
@@ -30,17 +34,14 @@ Tracks completed work. Future work lives in `docs/ROADMAP.md`; shipped changes a
 - [x] **Phase 5 — Persist Continue Watching / Progress / History to DB** — `functions/api/continue.js` (GET/POST/DELETE), `functions/api/history.js` (GET/POST, replay bumps `played_at` via unique index), `functions/api/import.js` (login sync, batch delete-then-insert); frontend `history.js` (D1-backed Watch History row) + `continue.js` (import + D1 mirror on progress/remove). Migrations `0003_history_unique.sql` + `0004_continue_unique.sql`. Offline/degraded mode retained (localStorage is always the render source; D1 writes gated behind a signed-in user). Verified: import dedupe (movies with NULL season stay a single row), continue GET/POST/DELETE, history replay no-duplicate bump, 401 guards
 - [x] **Bugfix (0.0.15) — watch-btn no longer plays the media** — `ui.js` `attachCardListeners()` ignores clicks/keyboard originating from the `.watch-btn`, so clicking "+ Watchlist"/"✓ Saved" only toggles the watchlist and never starts playback. Verified via event-flow simulation (served `ui.js` shows the guard).
 - [x] **Phase 6 — Harden, Test & Polish** — added `functions/_http.js` shared helpers (`error`, `json`, `dbError`, `MEDIA_TYPES`, `intOr`, `clampNum`, `s`); refactored all endpoints (`register`, `login`, `logout`, `watchlist`, `continue`, `history`, `import`) for server-side validation (media type, integer `tmdb_id`, capped/trimmed strings, clamped numerics, username/password bounds), authz (every query scoped by `user_id`), and try/catch consistent JSON 500s; `/api/import` capped at 200 rows. Verified end-to-end via local `wrangler pages dev`: two-user authz isolation, 401 gates, validation rejects (400/409), 201/200/204, progress clamps, import cap. **Decision: keep the guest localStorage path** — browsing/search/continue work logged-out; login only required for cross-device sync. Docs updated (ROADMAP Phase 6, CHANGELOGS 0.0.16, DATABASE.md, tasks.md).
+- [x] **Phase 7 — Profile** — `users.avatar_url` column (migration `0005_avatar.sql`, applied local+remote); `PATCH /api/profile` (update username/email/avatar; email uniqueness 409; avatar validated to `preset:<name>` or http(s) URL only; session cookie rotated on email change) and `POST /api/profile/password` (verifies current password, 401 on wrong); new `profile.js` modal (avatar presets + custom URL, edit username/email, change password) opened from a header **profile button**; **Watch History moved onto the Profile page** (homepage row removed; `history.js` renders inside the modal); `avatar_url` surfaced via `/api/me`, register, login, middleware. Verified end-to-end locally (register→me→patch avatar/username/email→session rotation→password change→old password invalidated, uniqueness 409, logged-out 401). Docs updated (ROADMAP Phase 7, CHANGELOGS 0.0.17, DATABASE.md, tasks.md).
 
 ## Forward
 
-- **Pending UI features** and the **Database + Accounts (Cloudflare D1)** phased plan (incl. **Phase 7 — Profile**) are tracked in **`docs/ROADMAP.md`**.
+- **Pending UI features** and the **Database + Accounts (Cloudflare D1)** phasing are tracked in **`docs/ROADMAP.md`**.
 - Database implementation guide: **`docs/DATABASE.md`**.
-- Next up: **Phase 7 — Profile page** (planned; see ROADMAP).
-- **Planned: Profile feature** — a signed-in user can open a Profile page to view and customize:
-  - **Profile picture / avatar**, **username**, **email**, **password**
-  - Endpoints: `PATCH/PUT /api/profile` (username/email/avatar) + `POST /api/profile/password` (current password required)
-  - Only accessible when signed in (guard, like the watchlist)
-- **Planned: Move Watch History to the Profile page** — remove the homepage "Watch History" row and render it (with resume/continue) on the Profile page instead.
+- Next up: **Pending UI features** (trending hero banner, Recently Added/Upcoming rows, genre filters, keyboard nav, dark/light toggle) in `docs/ROADMAP.md`.
+- **Planned (do NOT execute): Platform migration** — hosting to **Vercel** + database to **Supabase (Postgres)**. Full phased plan + task checklist lives in **`docs/migration-deployement.md`** (ROADMAP Phase 8).
 
 ## Notes
 

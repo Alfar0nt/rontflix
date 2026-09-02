@@ -120,13 +120,10 @@ async function renderEpisodesFromShow(tmdbId, seasonNumber) {
             return;
         }
 
-        let savedProgress = {};
-        try {
-            savedProgress = JSON.parse(localStorage.getItem('vidukinet-Progress') || '{}') || {};
-        } catch (e) {
-            console.warn('Could not parse saved progress:', e);
-        }
-        const showProgress = savedProgress[tmdbId]?.show_progress || {};
+        // Per-episode progress comes from the server-backed continue watching
+        // state (only available when signed in), never from localStorage.
+        const progressByShow = typeof getEpisodeProgressMap === 'function' ? getEpisodeProgressMap() : {};
+        const showProgress = progressByShow[tmdbId]?.show_progress || {};
 
         let episodesHtml = episodes.map(ep => {
             const epKey = `s${seasonNumber}e${ep.episode_number}`;

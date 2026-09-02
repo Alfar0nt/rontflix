@@ -48,6 +48,8 @@ rontflix/
 │   │   ├── watchlist.js     # GET/POST/DELETE /api/watchlist
 │   │   ├── continue.js      # GET/POST/DELETE /api/continue  (resume/progress)
 │   │   ├── history.js       # GET/POST /api/history          (watch history)
+│   │   ├── profile.js       # PATCH /api/profile             (username/email/avatar)
+│   │   ├── profile/password.js # POST /api/profile/password  (change password)
 │   │   └── import.js        # POST /api/import               (localStorage → D1 sync)
 │   ├── _http.js             # shared response/validation helpers (error, json, dbError, intOr, clampNum, s, MEDIA_TYPES)
 │   ├── _middleware.js       # shared session/auth helpers
@@ -57,7 +59,8 @@ rontflix/
 │   ├── 0001_init.sql                 # users, sessions, watchlist, continue_watching, watch_history
 │   ├── 0002_auth_attempts.sql        # rate-limit table
 │   ├── 0003_history_unique.sql       # watch_history unique index
-│   └── 0004_continue_unique.sql      # continue_watching unique index
+│   ├── 0004_continue_unique.sql      # continue_watching unique index
+│   └── 0005_avatar.sql               # users.avatar_url (profile avatar)
 ├── index.html
 ├── app.js
 ├── ... (existing static files)
@@ -441,7 +444,7 @@ export async function onRequestDelete(context) {
 
 ## 9b. Continue Watching / Progress Endpoints
 
-Player progress is written to D1 **in addition to** localStorage when a user is signed in. Every throttled progress tick → `POST /api/continue`; removing a title → `DELETE /api/continue`; on login the local list is pushed via `POST /api/import` (below).
+Continue Watching is **D1-only and per signed-in account** — it is not persisted to localStorage. A throttled progress tick → `POST /api/continue`; removing a title → `DELETE /api/continue`. The frontend `continue.js` keeps an in-memory list fetched via `GET /api/continue` on login/load and clears + hides it on logout. Guests are never tracked.
 
 ### Upsert one entry — `POST /api/continue`
 ```js
@@ -503,6 +506,9 @@ Every `openPlayer()` call records a history row (`POST /api/history`). Replays *
 ---
 
 ## 9d. Import (login sync) — `POST /api/import`
+
+> **Not used (v0.0.19+).** Continue Watching is D1-only, so there is no pre-login localStorage list to import. This endpoint is retained but no longer called by the frontend; it can be removed.
+
 Called on login to push the pre-login localStorage continue-watching list into D1.
 
 ```js
@@ -512,12 +518,16 @@ Each item does a delete-then-insert (local value wins). Uses `DB.batch()` for at
 
 ---
 
-## 9e. Profile (planned — not yet implemented)
+## 9e. Profile (implemented — v0.0.17)
 
-Future `users`-related endpoints (tracked in `docs/ROADMAP.md` Phase 7):
-- **`PATCH/PUT /api/profile`** — update the signed-in user's username, email, and/or avatar (extend `users` with e.g. `avatar_url TEXT`). Changing email must re-issue the session cookie.
-- **`POST /api/profile/password`** — change password; requires the current password (verify via `_password.js`) before updating `password_hash`.
-- Guarded by `context.data.user` (401 when signed out), and every write scoped to the authenticated user's row (`WHERE id = context.data.user.id`).
+Endpoints that view/edit the signed-in user's profile:
+- **`PATCH /api/profile`** (`functions/api/profile.js`) — update the signed-in user's **username**, **email**, and/or **avatar** (`users.avatar_url`, added by migration `0005_avatar.sql`). Validates email format + `username` length, rejects duplicate emails (`409`), and accepts `avatar_url` values of `NULL`, `preset:<name>`, or an `http(s)` image URL only (`javascript:`/`data:` rejected). **Changing email rotates the session** (deletes the old token, issues a new one, returns a fresh `Set-Cookie`).
+- **`POST /api/profile/password`** (`functions/api/profile/password.js`) — change password; requires the current password (verified via `_password.js`) before updating `password_hash`. Wrong current → `401`.
+- Both guarded by `context.data.user` (401 when signed out) and every write scoped to the authenticated user's row (`WHERE id = context.data.user.id`).
+
+**Avatar storage (decision):** no R2 upload pipeline. `users.avatar_url` stores one of: `NULL` (fall back to an initial-letter avatar), `preset:<name>` (a named color-initial avatar), or an `http(s)` image URL. The frontend (`profile.js`) renders presets as colored initials and URLs as `<img>`.
+
+On the frontend, `avatar_url` is included in the user object returned by `/api/me`, `/api/register`, `/api/login`, and the auth middleware, so the header can render the same avatar as the profile.
 
 ---
 
@@ -569,15 +579,15 @@ Guard watchlist/history UI: only fetch `/api/watchlist` when `currentUser` is se
 
 ---
 
-## 11. Migration of Existing localStorage State
+## 11. Continue Watching — D1-only (no localStorage)
 
-On successful login, the app calls **`POST /api/import`** (see §9d) to push the pre-login `vidukinet-ContinueWatching`/`vidukinet-Progress` data into D1:
+Continue Watching does **not** use localStorage at all. It lives exclusively in `continue_watching` (D1) and an in-memory list on the client:
 
-1. Read `vidukinet-ContinueWatching` and `vidukinet-Progress` from localStorage and map each entry to `{ tmdb_id, media_type, season, episode, title, poster_path, watched, duration }`.
-2. `POST /api/import` upserts each into `continue_watching`.
-3. localStorage is kept as the always-on render source (offline/degraded mode) — it is *not* cleared; D1 is mirrored when signed in. Signing out reverts to the local list.
+1. **Signed-in** → `continue.js` calls `GET /api/continue` on login/load; progress ticks `POST /api/continue`, removals `DELETE /api/continue`.
+2. **Signed-out** → the in-memory list is cleared and the section hides; no continue-watching data is stored or read from localStorage, and guests are not tracked.
+3. On load the app also clears any stale `vidukinet-ContinueWatching` / `vidukinet-Progress` keys left by older versions.
 
-**D1 remains authoritative across devices when signed in:** on login, `continue.js`'s `loadContinueWatching()` imports local → D1, then pulls D1 → local and re-renders.
+The old `POST /api/import` (login sync from localStorage) is no longer called by the frontend. It remains defined in `functions/api/import.js` but is unused and can be removed.
 
 ---
 
@@ -593,7 +603,7 @@ wrangler pages dev .
 
 Then hit `http://localhost:8787/api/register`, `.../api/login`, etc., and open the app at `http://localhost:8787`.
 
-Manual test flow: register → login → confirm cookie set → add a watchlist item → GET watchlist returns it → play media → check `continue_watching` updated → logout → `/api/me` returns `user: null`.
+Manual test flow: register → login → confirm cookie set → add a watchlist item → GET watchlist returns it → `POST /api/continue` an entry → `GET /api/continue` returns it → logout → `GET /api/continue` with the old cookie returns `401` (row hidden) → re-login → `GET /api/continue` returns the same entry.
 
 ---
 

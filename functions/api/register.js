@@ -59,7 +59,7 @@ export async function onRequestPost(context) {
     return dbError(err);
   }
 
-  return new Response(JSON.stringify({ user: { id: userId, email, username } }), {
+  return new Response(JSON.stringify({ user: { id: userId, email, username, avatar_url: null } }), {
     status: 201,
     headers: {
       "Content-Type": "application/json",

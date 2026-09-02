@@ -68,12 +68,17 @@ Small, client-side-only enhancements. They do not require a backend.
 - [x] Error handling + consistent JSON responses from all Functions — DB access wrapped in try/catch returning stable JSON 500; every endpoint returns `{ error }` or `{ ... }` JSON with proper status codes; e2e verified 400/401/409/429/201/200
 - [x] Manual e2e test: register → login → add watchlist → play → resume via another session — ran against local `wrangler pages dev`; verified two-user authz isolation, 401 gates, validation rejects, import cap (200), and progress clamps
 - [x] Update `docs/DATABASE.md` with final schema + deployment steps
-- [x] Decide whether to keep localStorage path for guest/not-logged-in users or require login — **decision: keep the guest localStorage path.** Browsing, search, and continue-watching work without an account; login is only required for cross-device sync (watchlist, history, server-side continue). localStorage remains the always-on render source; D1 writes are gated behind a signed-in user.
+- [x] Decide whether to keep localStorage path for guest/not-logged-in users or require login — **decision (initially): keep the guest localStorage path** for continue-watching. **Revised in v0.0.19:** Continue Watching is **D1-only for signed-in users** — no guest localStorage path; it appears on login and disappears on logout. Browsing/search still work signed-out; the watchlist and history remain D1-gated.
 
 ### Phase 7 — Profile
-- [ ] **Profile page** — dedicated "Profile" screen the signed-in user can open; make the header username/avatar link to it
-- [ ] **View & edit profile** — show profile picture (avatar), username, email; allow the user to change their **profile picture**, **username**, **email**, and **password**
-- [ ] Backend endpoints — `PATCH/PUT /api/profile` (update username/email/avatar) and `POST /api/profile/password` (change password, requires current password); re-issue session cookie on email change
-- [ ] **Avatar/picture storage** — pick a mechanism (e.g. upload → Cloudflare R2 / image URL in `users.avatar_url`, or a set of presets/color-initial avatars); extend the `users` table migration
-- [ ] Guard — profile only accessible when signed in (mirrors the watchlist guard); sign-in prompt otherwise
-- [ ] **Move Watch History onto the Profile page** — remove the homepage "Watch History" row; render it (with resume/continue) on the profile page instead. (Currently on the homepage from Phase 5.)
+- [x] **Profile page** — dedicated "Profile" screen the signed-in user can open; make the header username/avatar link to it
+- [x] **View & edit profile** — show profile picture (avatar), username, email; allow the user to change their **profile picture**, **username**, **email**, and **password**
+- [x] Backend endpoints — `PATCH/PUT /api/profile` (update username/email/avatar) and `POST /api/profile/password` (change password, requires current password); re-issue session cookie on email change
+- [x] **Avatar/picture storage** — pick a mechanism (e.g. upload → Cloudflare R2 / image URL in `users.avatar_url`, or a set of presets/color-initial avatars); extend the `users` table migration
+- [x] Guard — profile only accessible when signed in (mirrors the watchlist guard); sign-in prompt otherwise
+- [x] **Move Watch History onto the Profile page** — remove the homepage "Watch History" row; render it (with resume/continue) on the profile page instead. (Currently on the homepage from Phase 5.)
+
+### Phase 8 — Platform Migration to Vercel + Supabase (PLANNED, not to be executed)
+- [ ] Migrate hosting from **Cloudflare Pages** to **Vercel** and the database from **Cloudflare D1 (SQLite)** to **Supabase (PostgreSQL)**.
+- [ ] This is **planning-only** — the full phased, step-by-step plan (schema conversion, data migration, auth decision, endpoint porting, DNS/cutover, rollback) lives in **`docs/migration-deployement.md`**.
+- [ ] Do **not** begin any of the migration steps until explicitly approved; keep Cloudflare + D1 live for parity/rollback until Phase 8 cleanup.
