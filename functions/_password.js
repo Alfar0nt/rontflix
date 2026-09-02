@@ -16,9 +16,9 @@ const enc = new TextEncoder();
 // middle-ground for Cloudflare Workers (strong against brute-force without
 // exhausting per-request CPU time). The actual count used is stored with the
 // hash, so raising this later does not invalidate existing hashes.
-const DEFAULT_ITERATIONS = 310_000;
+const DEFAULT_ITERATIONS = 310000;
 // Legacy hashes (pre-security-audit) were written at 100k.
-const LEGACY_ITERATIONS = 100_000;
+const LEGACY_ITERATIONS = 100000;
 
 function bufToB64(buf) {
   const bytes = new Uint8Array(buf);
