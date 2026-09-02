@@ -545,6 +545,138 @@ a {
     transition: width 300ms ease;
 }
 
+/* ===== MY WATCHLIST ===== */
+.watchlist-section {
+    margin: 24px 0 4px;
+}
+
+.watchlist-title {
+    font-size: 1.15rem;
+    font-weight: 600;
+    letter-spacing: -0.3px;
+    color: var(--text);
+    margin-bottom: 12px;
+}
+
+.watchlist-grid {
+    display: flex;
+    gap: 14px;
+    overflow-x: auto;
+    padding-bottom: 12px;
+    scroll-snap-type: x proximity;
+    scrollbar-width: thin;
+    scrollbar-color: var(--surface-3) var(--bg);
+    overscroll-behavior-x: contain;
+}
+
+.watchlist-grid::-webkit-scrollbar {
+    height: 6px;
+}
+
+.watchlist-grid::-webkit-scrollbar-track {
+    background: var(--bg);
+    border-radius: var(--radius-full);
+}
+
+.watchlist-grid::-webkit-scrollbar-thumb {
+    background: var(--surface-3);
+    border-radius: var(--radius-full);
+}
+
+.watchlist-grid > * {
+    scroll-snap-align: start;
+}
+
+.watchlist-grid .movie-card {
+    flex: 0 0 160px;
+    width: 160px;
+}
+
+/* ===== WATCHLIST TOGGLE BUTTON ON CARDS ===== */
+.watch-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 5;
+    min-height: 30px;
+    padding: 4px 10px;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(4px);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: var(--radius-full);
+    font-size: 0.72rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background var(--transition-fast), transform var(--transition-fast), border-color var(--transition-fast);
+}
+
+.watch-btn:hover {
+    background: rgba(0, 0, 0, 0.9);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: scale(1.04);
+}
+
+.watch-btn:active {
+    transform: scale(0.96);
+}
+
+.watch-btn.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+}
+
+.watch-btn.active:hover {
+    background: var(--primary-hover);
+}
+
+/* ===== WATCHLIST LOGGED-OUT GUARD ===== */
+.watchlist-section.is-guarded .watchlist-grid {
+    display: block;
+    overflow: visible;
+}
+
+.watchlist-guard {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 20px 22px;
+    background: var(--surface-2);
+    border: 1px solid var(--surface-3);
+    border-radius: var(--radius-md);
+}
+
+.watchlist-guard-text {
+    margin: 0;
+    color: var(--text-dim, #9aa0a8);
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.watchlist-guard-btn {
+    min-height: 40px;
+    padding: 8px 22px;
+    background: var(--primary);
+    border: none;
+    border-radius: var(--radius-full);
+    color: #fff;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background var(--transition-fast), transform var(--transition-fast);
+}
+
+.watchlist-guard-btn:hover {
+    background: var(--primary-hover);
+    transform: translateY(-1px);
+}
+
+.watchlist-guard-btn:active {
+    transform: translateY(0);
+}
+
 /* ===== STATUS MESSAGES ===== */
 .info-msg {
     margin-top: 15px;
@@ -1244,7 +1376,8 @@ a {
     }
 
     .continue-card,
-    .row-grid .movie-card {
+    .row-grid .movie-card,
+    .watchlist-grid .movie-card {
         flex-basis: 150px;
         width: 150px;
     }

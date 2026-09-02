@@ -71,6 +71,9 @@ window.addEventListener('load', () => {
 
     setStatus('Search for a movie or TV show to get started.', '');
     initAuth();
+    // NOTE: initWatchlist() is intentionally NOT called here. auth.js owns it
+    // and triggers it only after checkSession() resolves, so currentUser is
+    // correct before the D1 watchlist is fetched (avoids a stale logged-out guard).
     renderContinueWatching();
     loadRecommendations();
 });

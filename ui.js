@@ -102,8 +102,13 @@ function mediaCardHTML(item) {
         alt="${safeTitle}" loading="lazy" decoding="async" />`;
     }
 
+    const watchBtn = typeof watchButtonHTML === 'function'
+        ? watchButtonHTML(item.id, item.media_type, title, item.poster_path || '')
+        : '';
+
     return `
     <article class="movie-card" data-id="${item.id}" data-type="${item.media_type}" data-title="${safeTitle}" data-poster="${item.poster_path || ''}" data-year="${year}" tabindex="0" role="button" aria-label="Play ${safeTitle} (${year})">
+    ${watchBtn}
     ${img}
     <div class="info">
     <div class="title">${safeTitle}</div>

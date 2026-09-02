@@ -9,7 +9,7 @@ Vanilla HTML/CSS/JS Netflix-like streaming app. No framework, no bundler, no dep
 `index.html` loads scripts in dependency order — do not reorder:
 
 ```
-config.js → tmdb.js → ui.js → continue.js → player.js → episodes.js → search.js → recommendations.js → app.js
+config.js → tmdb.js → ui.js → auth.js → watchlist.js → continue.js → player.js → episodes.js → search.js → recommendations.js → app.js
 ```
 
 `app.js` bootstraps on `window.load` (calls `renderContinueWatching()` + `loadRecommendations()`).

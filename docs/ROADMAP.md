@@ -45,15 +45,15 @@ Small, client-side-only enhancements. They do not require a backend.
 - [x] Toggle between login/register, accessible (labels, aria-live errors, focus management, keyboard friendly)
 - [x] "Logged in" UI state — show user's name / avatar in header with a logout control
 - [x] Persist login across reload (session token in httpOnly cookie via Secure settings)
-- [ ] Prevent access to watchlist/profile when logged out (guard UI) — pending watchlist/profile UI (Phase 4)
+- [x] Prevent access to watchlist when logged out (guard UI) — logged-out users see a "Sign in to save your watchlist" prompt instead of the saved items; the card toggle opens the sign-in modal. (Profile UI is not yet built; recheck when a profile screen lands.)
 
 ### Phase 4 — Watchlist
-- [ ] **Add to watchlist endpoint** (`/api/watchlist`, POST) — store tmdb_id + media_type + title + poster per user
-- [ ] **Get watchlist endpoint** (`/api/watchlist`, GET) — fetch current user's list
-- [ ] **Remove/watchlist-toggling endpoint** (DELETE)
-- [ ] **Watchlist UI** — "+ Watchlist" toggle on cards + a dedicated watchlist row/section on the homepage
-- [ ] Optimistic UI updates (toggle instantly, sync with server) + loading/error feedback
-- [ ] Watchlist persistence in D1 (not localStorage) once logged in
+- [x] **Add to watchlist endpoint** (`/api/watchlist`, POST) — store tmdb_id + media_type + title + poster per user (idempotent upsert)
+- [x] **Get watchlist endpoint** (`/api/watchlist`, GET) — fetch current user's list, newest first
+- [x] **Remove/watchlist-toggling endpoint** (DELETE, by tmdb_id + media_type)
+- [x] **Watchlist UI** — "+ Watchlist"/"✓ Saved" toggle button on every media card + a dedicated "My Watchlist" row on the homepage
+- [x] Optimistic UI updates (toggle instantly, sync with server, rollback on error) + loading/error feedback
+- [x] Watchlist persistence in D1 (not localStorage) once logged in; guarded when logged out (prompts sign-in)
 
 ### Phase 5 — Persist Continue Watching / Progress / History to DB
 - [ ] Sync `continue_watching` + progress from localStorage → D1 when a user logs in (migration)

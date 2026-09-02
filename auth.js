@@ -41,6 +41,7 @@ async function logout() {
     await api('/api/logout', { method: 'POST' });
     currentUser = null;
     renderAuthArea();
+    if (typeof initWatchlist === 'function') initWatchlist();
 }
 
 async function checkSession() {
@@ -259,6 +260,9 @@ async function handleAuthSubmit(mode) {
         renderAuthArea();
         closeAuthModal();
         setStatus(isLogin ? `Signed in as ${currentUser.username}.` : `Account created. Welcome, ${currentUser.username}!`, 'success');
+
+        // Refresh the D1-backed watchlist for the new session.
+        if (typeof initWatchlist === 'function') initWatchlist();
     } catch (err) {
         setAuthMsg(err.message || 'Something went wrong.', 'error');
         setAuthLoading(false);
@@ -290,5 +294,6 @@ window.addEventListener('load', () => {
     // Restore a logged-in session across reloads (httpOnly cookie auto-sends).
     checkSession().then(() => {
         renderAuthArea();
+        if (typeof initWatchlist === 'function') initWatchlist();
     });
 });

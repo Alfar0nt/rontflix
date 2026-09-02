@@ -12,6 +12,28 @@ Future work (pending UI features + the Cloudflare D1 Database & Accounts roadmap
 
 ---
 
+## [0.0.13] - 2026-09-02
+
+Phase 4 of the Database + Accounts roadmap — Watchlist.
+
+### Added
+- **`functions/api/watchlist.js`** — `GET` (list current user's items, newest first), `POST` (idempotent add/upsert by `user_id`+`tmdb_id`+`media_type`), `DELETE` (remove by `tmdb_id`+`media_type`); all scoped to the authenticated user (401 when logged out)
+- **`watchlist.js`** (frontend) — `watchlistItems` state, `loadWatchlist()` (D1-backed, only when `currentUser`), `toggleWatchlist()` with optimistic UI + rollback on error, `renderWatchlistRow()` (homepage "My Watchlist" row), a delegated `.watch-btn` click handler, and a **logged-out guard** that shows a "Sign in to save your watchlist" prompt instead of the saved items
+- **Watchlist toggle button** — "+ Watchlist"/"✓ Saved" overlay on every media card via `ui.js` `mediaCardHTML()` calling `watchButtonHTML()`
+- **`index.html`** — `#watchlistSection`/`#watchlistContainer` row; `watchlist.js` loaded after `auth.js` (script order: `config → tmdb → ui → auth → watchlist → continue → player → episodes → search → recommendations → app`)
+- **`style.css`** — watchlist section/grid + the `watch-btn` toggle (active/`✓ Saved` state), incl. mobile sizing
+
+### Changed
+- `auth.js` — calls `initWatchlist()` after session check on load and after login/logout so the row reflects auth state
+- `app.js` — calls `initWatchlist()` on load
+- `ui.js` — `mediaCardHTML()` renders the watchlist toggle button on every card
+
+### Verified
+- Backend round-trip via `wrangler pages dev` + curl: register→cookie, empty GET `{items:[]}`, POST add (201) for movie + TV, GET list (2 items), unauthenticated GET/POST → 401, DELETE removes, GET reflects removal
+- Frontend: watchlist section + `watchlist.js` served (200); `watch-btn` wired through `mediaCardHTML` → `watchButtonHTML`; card buttons toggle optimistically and reconcile with D1
+
+---
+
 ## [0.0.12] - 2026-09-02
 
 Bugfix: persisted login over plain-http LAN (phone testing).

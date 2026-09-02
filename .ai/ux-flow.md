@@ -4,11 +4,19 @@
 
 1. Browser loads `index.html` — a single-page app shell
 2. Scripts load in order (no bundler, no deferred imports):
-   `config.js → tmdb.js → ui.js → continue.js → player.js → episodes.js → search.js → recommendations.js → app.js`
+   `config.js → tmdb.js → ui.js → auth.js → watchlist.js → continue.js → player.js → episodes.js → search.js → recommendations.js → app.js`
 3. `app.js` registers global listeners and fires on `window.load`:
    - Restores last-selected Viduki API from `localStorage`
+   - Calls `initAuth()` — renders the header auth area (Sign in button, or username/avatar + Log out)
+   - Calls `initWatchlist()` — if logged in, fetches the D1-backed watchlist and renders the "My Watchlist" row
    - Calls `renderContinueWatching()` — reads `localStorage`, renders cards
    - Calls `loadRecommendations()` — 4 parallel TMDB API calls, renders rows
+
+## Auth Session
+
+- On load, `auth.js` calls `checkSession()` (`GET /api/me`) — the `HttpOnly` session cookie is auto-sent; the resolved user is kept in `currentUser` and used to render the header + load the watchlist.
+- Sign in / Create account open an accessible modal; success sets `currentUser` and reloads the watchlist row.
+- Log out (`POST /api/logout`) clears the server session and hides the watchlist row.
 
 ## Homepage Recommendations
 
@@ -78,14 +86,20 @@ User clicks a TV show card (or presses Enter/Space)
 
 ## Data Persistence
 
-All state is `localStorage` — no backend:
+Two layers now exist:
 
+### localStorage (client-only, not synced between devices)
 | Key | Purpose |
 |---|---|
-| `vidukinet-ContinueWatching` | Array of in-progress media entries |
+| `vidukinet-ContinueWatching` | In-progress media entries (per device/browser) |
 | `vidukinet-SelectedApi` | Last selected Viduki API variant (1-4) |
 | `vidukinet-TMDBCache` | Cached TMDB responses with timestamps |
 | `vidukinet-Progress` | Raw progress data from Viduki `postMessage` |
+
+### Cloudflare D1 (server-side, per logged-in account, cross-device)
+- `users` / `sessions` — auth (via Cloudflare Pages Functions + D1)
+- `watchlist` — saved titles (`/api/watchlist` GET/POST/DELETE), rendered in the "My Watchlist" row when logged in
+- Continue Watching / progress still lives in `localStorage` only (see roadmap Phase 5 for D1 sync)
 
 ## External Dependencies (Runtime)
 

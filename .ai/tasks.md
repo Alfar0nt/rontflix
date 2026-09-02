@@ -23,13 +23,15 @@ Tracks completed work. Future work lives in `docs/ROADMAP.md`; shipped changes a
 - [x] **Phase 1 — Foundation & Database Schema** — Pages Functions `functions/_middleware.js` (D1 binding + session cookie helpers), `wrangler.toml` with real D1 `database_id`, schema migration `migrations/0001_init.sql` (`users`, `sessions`, `watchlist`, `continue_watching`, `watch_history`) applied to local + remote D1 (`rontflix-db`), and verified locally via `wrangler pages dev`
 - [x] **Phase 2 — Authentication (Register + Login + Logout)** — `functions/_password.js` (PBKDF2 hashing), `functions/_rateLimit.js` (5-fail lockout), `functions/api/register.js`, `login.js`, `logout.js`, `me.js`; `context.data.user` auth resolution in middleware + migration `0002_auth_attempts.sql`. Verified end-to-end locally (`201/409/401/429/204`, httpOnly cookie, `/api/me` user/null)
 - [x] **Phase 3 — Auth UI (Register + Login)** — `auth.js` (API wrapper, `currentUser`, `register/login/logout/checkSession`), login/register modal with toggle, show/hide password, loading→success/error feedback, header signed-in username/avatar + Log out or Sign in button, session persists via httpOnly cookie. Accessible (labels, `aria-live`, focus return, Esc/backdrop close)
+- [x] **Phase 3 — Watchlist logged-out guard** — logged-out users see a "Sign in to save your watchlist" prompt in the watchlist row instead of saved items; the card toggle button opens the sign-in modal. (Profile UI not yet built; recheck when one lands)
 - [x] **Cookie `Secure` fix (0.0.12)** — auth cookie `Secure` flag now conditional on request scheme (HTTPS only), so login persists over plain-http LAN (phone testing); production remains HTTPS+`Secure`
+- [x] **Phase 4 — Watchlist** — `functions/api/watchlist.js` (GET/POST/DELETE, user-scoped, 401 without auth), `watchlist.js` (D1-backed state, optimistic toggle, "My Watchlist" homepage row, delegated `.watch-btn` handler), toggle button on every media card via `mediaCardHTML`→`watchButtonHTML`. Verified: add/list/remove round-trip + 401 guards
 
 ## Forward
 
 - **Pending UI features** and the **Database + Accounts (Cloudflare D1)** phased plan are tracked in **`docs/ROADMAP.md`**.
 - Database implementation guide: **`docs/DATABASE.md`**.
-- Next up: **Phase 4 — Watchlist**.
+- Next up: **Phase 5 — Persist Continue Watching / Progress / History to DB**.
 
 ## Notes
 
