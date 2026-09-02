@@ -48,8 +48,11 @@ window.addEventListener('message', (event) => {
 
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
-        closeModal();
-        closePlayer();
+        if (modal.classList.contains('show')) {
+            closeModal();
+        } else if (playerPopup.classList.contains('show')) {
+            closePlayer();
+        }
     }
 });
 

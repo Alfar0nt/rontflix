@@ -10,6 +10,8 @@ const showCache = {};
 async function openEpisodePicker(tmdbId, showTitle, posterPath = '', year = '') {
     try {
         setStatus(`Loading ${showTitle}...`, '');
+        modalBody.innerHTML = '<div class="modal-show-title">Loading...</div>' + Array(5).fill('').map(() => skeletonCardHTML()).join('');
+        modal.classList.add('show');
 
         // Check cache first
         if (showCache[tmdbId]) {
@@ -30,6 +32,7 @@ async function openEpisodePicker(tmdbId, showTitle, posterPath = '', year = '') 
         setStatus(`Select an episode of ${showTitle}`, '');
     } catch (err) {
         console.error('Error loading show:', err);
+        if (modal.classList.contains('show')) closeModal();
         setStatus(`Error loading show: ${err.message}`, 'error');
         // Still try to open the player with season 1, episode 1 as fallback
         setStatus(`Could not load seasons. Trying to play ${showTitle} S1E1...`, 'error');
@@ -41,6 +44,7 @@ function buildModalFromShow(show) {
     // Build modal content from show data
     modalBody.innerHTML = buildModalContent(show);
     modal.classList.add('show');
+    document.body.style.overflow = 'hidden';
 
     // Get seasons from the show data
     const seasons = show.seasons || [];
@@ -71,7 +75,7 @@ function buildModalContent(show) {
     const regularSeasons = seasons.filter(s => s.season_number > 0);
 
     let seasonButtons = regularSeasons.map(s => `
-    <button class="season-btn" data-season="${s.season_number}">
+    <button class="season-btn" data-season="${s.season_number}" type="button">
     Season ${s.season_number} ${s.episode_count ? `(${s.episode_count} eps)` : ''}
     </button>
     `).join('');
@@ -81,9 +85,9 @@ function buildModalContent(show) {
     }
 
     return `
-    <div style="display:flex; gap:15px; margin-bottom:20px; flex-wrap:wrap;">
-    ${poster ? `<img src="${poster}" alt="${safeName}" style="width:120px; height:180px; object-fit:cover; border-radius:8px;" />` : ''}
-    <div style="flex:1; min-width:200px;">
+    <div class="modal-show-head">
+    ${poster ? `<img src="${poster}" alt="${safeName}" class="modal-show-poster" loading="lazy" decoding="async" />` : ''}
+    <div class="modal-show-body">
     <div class="modal-show-title">${safeName}</div>
     <div class="modal-show-meta">${year} • ${genres}</div>
     <div class="modal-overview">${overview}</div>
@@ -93,7 +97,7 @@ function buildModalContent(show) {
     ${seasonButtons}
     </div>
     <div id="episodeContainer">
-    <div class="loading-placeholder">Loading episodes...</div>
+    <div class="no-episodes">Loading episodes...</div>
     </div>
     `;
 }
@@ -102,7 +106,8 @@ async function renderEpisodesFromShow(tmdbId, seasonNumber) {
     const container = document.getElementById('episodeContainer');
     if (!container) return;
 
-    container.innerHTML = '<div class="loading-placeholder">Loading episodes...</div>';
+    container.innerHTML = '<div class="no-episodes">Loading episodes...</div>';
+    container.setAttribute('aria-busy', 'true');
 
     try {
         // Fetch season details
@@ -111,6 +116,7 @@ async function renderEpisodesFromShow(tmdbId, seasonNumber) {
 
         if (episodes.length === 0) {
             container.innerHTML = '<div class="no-episodes">No episodes found for this season.</div>';
+            container.setAttribute('aria-busy', 'false');
             return;
         }
 
@@ -135,7 +141,7 @@ async function renderEpisodesFromShow(tmdbId, seasonNumber) {
             const epRuntime = ep.runtime ? ` • ${escapeHtml(String(ep.runtime))}m` : '';
 
             return `
-            <div class="episode-item" data-season="${seasonNumber}" data-episode="${ep.episode_number}">
+            <div class="episode-item" data-season="${seasonNumber}" data-episode="${ep.episode_number}" tabindex="0" role="button" aria-label="Play episode ${ep.episode_number} ${epName}">
             <div class="ep-number">E${ep.episode_number}</div>
             <div class="ep-title">
             <span class="ep-name">${epName}</span>
@@ -148,22 +154,33 @@ async function renderEpisodesFromShow(tmdbId, seasonNumber) {
 
         container.innerHTML = `<div class="episode-grid">${episodesHtml}</div>`;
 
+        function playEpisode(item) {
+            const season = item.dataset.season;
+            const episode = item.dataset.episode;
+            const title = `${currentShowData?.name || 'TV Show'} - S${season}E${episode}`;
+            const showPoster = currentShowData?.poster_path || '';
+            const showYear = currentShowData?.first_air_date ? currentShowData.first_air_date.substring(0, 4) : '';
+            closeModal();
+            openPlayer({ id: tmdbId, type: 'tv', title, season, episode, poster_path: showPoster, year: showYear });
+        }
+
         document.querySelectorAll('.episode-item').forEach(item => {
-            item.addEventListener('click', () => {
-                const season = item.dataset.season;
-                const episode = item.dataset.episode;
-                const title = `${currentShowData?.name || 'TV Show'} - S${season}E${episode}`;
-                const showPoster = currentShowData?.poster_path || '';
-                const showYear = currentShowData?.first_air_date ? currentShowData.first_air_date.substring(0, 4) : '';
-                closeModal();
-                openPlayer({ id: tmdbId, type: 'tv', title, season, episode, poster_path: showPoster, year: showYear });
+            item.addEventListener('click', () => playEpisode(item));
+            item.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    playEpisode(item);
+                }
             });
         });
 
         // Update active season button
         document.querySelectorAll('.season-btn').forEach(btn => {
             btn.classList.toggle('active', parseInt(btn.dataset.season) === seasonNumber);
+            btn.setAttribute('aria-pressed', btn.classList.contains('active') ? 'true' : 'false');
         });
+
+        container.setAttribute('aria-busy', 'false');
 
     } catch (err) {
         // If the season was not found, fall back to the show's season list
@@ -171,11 +188,13 @@ async function renderEpisodesFromShow(tmdbId, seasonNumber) {
             const season = currentShowData.seasons.find(s => s.season_number === seasonNumber);
             if (season && season.episode_count === 0) {
                 container.innerHTML = '<div class="no-episodes">No episodes available for this season.</div>';
+                container.setAttribute('aria-busy', 'false');
                 return;
             }
         }
         console.error('Error loading episodes:', err);
         container.innerHTML = `<div class="no-episodes">Error loading episodes: ${err.message}. Try selecting a different season.</div>`;
+        container.setAttribute('aria-busy', 'false');
     }
 }
 
@@ -186,8 +205,8 @@ function closeModal() {
     modal.classList.remove('show');
     modalBody.innerHTML = '';
     currentShowData = null;
+    document.body.style.overflow = '';
 }
-
 modalClose.addEventListener('click', closeModal);
 modal.addEventListener('click', (e) => {
     if (e.target === modal) closeModal();

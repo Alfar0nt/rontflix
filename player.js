@@ -11,6 +11,9 @@ let currentMedia = {
     year: ''
 };
 
+// Track where focus should return when player closes
+let playerFocusReturn = null;
+
 function openPlayer(media) {
     const apiVersion = apiSelect.value;
     const { id, type, title, season, episode } = media;
@@ -19,6 +22,11 @@ function openPlayer(media) {
     if (!src) {
         setStatus('Invalid media selection.', 'error');
         return;
+    }
+
+    // Remember what had focus so we can restore it on close
+    if (document.activeElement && document.activeElement !== document.body) {
+        playerFocusReturn = document.activeElement;
     }
 
     // Store current media info
@@ -38,6 +46,7 @@ function openPlayer(media) {
     popupApiInfo.textContent = `API ${apiVersion}`;
     playerPopup.classList.add('show');
     document.body.style.overflow = 'hidden';
+    closePlayerBtn.focus();
 
     loadPlayerMeta({ id, type });
     updateContinueEntry(currentMedia, null);
@@ -50,6 +59,11 @@ function closePlayer() {
     document.body.style.overflow = '';
     playerMeta.style.display = 'none';
     currentMedia = { id: null, type: null, title: null, season: null, episode: null, poster_path: null, year: '' };
+
+    if (playerFocusReturn && document.contains(playerFocusReturn)) {
+        playerFocusReturn.focus();
+    }
+    playerFocusReturn = null;
 }
 
 function rebuildPlayerSrc(apiVersion) {

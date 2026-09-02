@@ -90,30 +90,20 @@ function renderContinueWatching() {
         const epLabel = entry.type === 'tv' && entry.season ? ` • S${entry.season}E${entry.episode}` : '';
 
         return `
-        <div class="continue-card" data-id="${entry.id}" data-type="${entry.type}" data-title="${safeTitle}" data-poster="${entry.poster_path || ''}" data-year="${entry.year}" data-season="${entry.season || ''}" data-episode="${entry.episode || ''}">
-        <button class="continue-remove" data-remove-id="${entry.id}" data-remove-type="${entry.type}" title="Remove from list">×</button>
-        <img src="${poster}" alt="${safeTitle}" loading="lazy" />
+        <article class="continue-card" data-id="${entry.id}" data-type="${entry.type}" data-title="${safeTitle}" data-poster="${entry.poster_path || ''}" data-year="${entry.year}" data-season="${entry.season || ''}" data-episode="${entry.episode || ''}" tabindex="0" role="button" aria-label="Continue playing ${safeTitle}${epLabel}">
+        <button class="continue-remove" data-remove-id="${entry.id}" data-remove-type="${entry.type}" title="Remove from list" aria-label="Remove ${safeTitle} from list">×</button>
+        <img src="${poster}" alt="${safeTitle}" loading="lazy" decoding="async" />
         <div class="info">
         <div class="title">${safeTitle}</div>
         <div class="sub">${typeLabel}${epLabel}</div>
-        <div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div>
+        <div class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}" aria-label="${pct}% watched"><div class="progress-fill" style="width:${pct}%"></div></div>
         </div>
-        </div>
+        </article>
         `;
     }).join('');
 }
 
-continueContainer.addEventListener('click', (e) => {
-    const removeBtn = e.target.closest('.continue-remove');
-    if (removeBtn) {
-        e.stopPropagation();
-        removeContinueEntry(removeBtn.dataset.removeId, removeBtn.dataset.removeType);
-        return;
-    }
-
-    const card = e.target.closest('.continue-card');
-    if (!card) return;
-
+function playContinueCard(card) {
     const id = card.dataset.id;
     const type = card.dataset.type;
     const title = card.dataset.title;
@@ -132,5 +122,28 @@ continueContainer.addEventListener('click', (e) => {
         });
     } else {
         openPlayer({ id, type: 'movie', title, poster_path: posterPath, year });
+    }
+}
+
+continueContainer.addEventListener('click', (e) => {
+    const removeBtn = e.target.closest('.continue-remove');
+    if (removeBtn) {
+        e.stopPropagation();
+        removeContinueEntry(removeBtn.dataset.removeId, removeBtn.dataset.removeType);
+        return;
+    }
+
+    const card = e.target.closest('.continue-card');
+    if (!card) return;
+
+    playContinueCard(card);
+});
+
+continueContainer.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+        const card = e.target.closest('.continue-card');
+        if (!card) return;
+        e.preventDefault();
+        playContinueCard(card);
     }
 });

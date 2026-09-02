@@ -35,8 +35,9 @@ async function loadRecommendations() {
 function renderRow(title, items, lazy = false) {
     if (!items.length) return;
 
-    const row = document.createElement('div');
+    const row = document.createElement('section');
     row.className = 'media-row';
+    row.setAttribute('aria-label', title);
     row.innerHTML = `
     <h2 class="row-title">${escapeHtml(title)}</h2>
     <div class="row-grid">${lazy ? '' : items.slice(0, ROW_SIZE).map(mediaCardHTML).join('')}</div>
@@ -53,6 +54,15 @@ function renderRow(title, items, lazy = false) {
 }
 
 function lazyRenderRow(grid, items) {
+    // Show skeleton placeholders until scrolled into view
+    grid.innerHTML = Array(6).fill('').map(() => {
+        return `<div class="skeleton" style="flex:0 0 170px; width:170px; flex-shrink:0;">
+          <div class="skeleton-poster"></div>
+          <div class="skeleton-text"></div>
+          <div class="skeleton-text short"></div>
+        </div>`;
+    }).join('');
+
     const observer = new IntersectionObserver((entries) => {
         if (entries[0].isIntersecting) {
             observer.disconnect();

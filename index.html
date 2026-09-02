@@ -3,80 +3,101 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="r0ntflix - Personal movie and TV streaming app" />
+  <meta name="theme-color" content="#000000" />
+  <meta name="robots" content="noindex" />
   <title>r0ntflix - Personal Movie/TV App</title>
   <link rel="preconnect" href="https://api.themoviedb.org" />
   <link rel="preconnect" href="https://image.tmdb.org" crossorigin />
   <link rel="preconnect" href="https://viduki.net" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div class="container">
-    <h1>🎬 r0ntflix</h1>
+    <header class="app-header">
+      <h1 class="brand">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <rect x="2" y="3" width="20" height="18" rx="3" stroke="currentColor" stroke-width="2" />
+          <path d="M10 8.5v7l6-3.5-6-3.5Z" fill="currentColor" />
+        </svg>
+        <span>r0ntflix</span>
+      </h1>
+    </header>
 
-    <!-- Search Area -->
-    <div class="search-area">
-      <input type="text" id="searchInput" placeholder="Search for movies or TV shows..." />
-      <button id="searchBtn">Search</button>
-    </div>
+    <main id="mainContent">
+      <!-- Search Area -->
+      <section aria-label="Search">
+        <div class="search-area">
+          <label class="visually-hidden" for="searchInput">Search for movies or TV shows</label>
+          <input type="search" id="searchInput" placeholder="Search movies or TV shows..." autocomplete="off" aria-label="Search for movies or TV shows" />
+          <button type="button" id="searchBtn">Search</button>
+        </div>
 
-    <!-- API Selector -->
-    <div class="api-selector">
-      <label for="apiSelect">Viduki API:</label>
-      <select id="apiSelect">
-        <option value="1">API 1 (Multi Server)</option>
-        <option value="2">API 2 (Multi Language)</option>
-        <option value="3">API 3 (Multi Embeds)</option>
-        <option value="4">API 4 (Premium Embeds)</option>
-      </select>
-    </div>
+        <!-- API Selector -->
+        <div class="api-selector">
+          <label for="apiSelect">Viduki API:</label>
+          <select id="apiSelect" aria-label="Select Viduki API variant">
+            <option value="1">API 1 (Multi Server)</option>
+            <option value="2">API 2 (Multi Language)</option>
+            <option value="3">API 3 (Multi Embeds)</option>
+            <option value="4">API 4 (Premium Embeds)</option>
+          </select>
+        </div>
+      </section>
 
-    <!-- Continue Watching -->
-    <div id="continueSection" class="continue-section" style="display:none;">
-      <h2 class="continue-title">Continue Watching</h2>
-      <div id="continueContainer" class="continue-grid"></div>
-    </div>
+      <!-- Continue Watching -->
+      <section id="continueSection" class="continue-section" style="display:none;" aria-label="Continue watching">
+        <h2 class="continue-title">Continue Watching</h2>
+        <div id="continueContainer" class="continue-grid"></div>
+      </section>
 
-    <!-- Home Recommendations -->
-    <div id="recommendations" class="recommendations"></div>
+      <!-- Home Recommendations -->
+      <section id="recommendations" class="recommendations" aria-label="Recommendations"></section>
 
-    <!-- Results Grid -->
-    <div id="resultsContainer" class="results-grid"></div>
+      <!-- Results Grid -->
+      <section id="resultsSection" aria-label="Search results">
+        <div id="resultsContainer" class="results-grid"></div>
+      </section>
 
-    <!-- Load More -->
-    <div id="loadMoreWrap" class="load-more-wrap" style="display:none;">
-      <button id="loadMoreBtn" class="load-more-btn">Load More</button>
-    </div>
+      <!-- Load More -->
+      <div id="loadMoreWrap" class="load-more-wrap" style="display:none;">
+        <button id="loadMoreBtn" class="load-more-btn">Load More</button>
+      </div>
 
-    <!-- Status Message -->
-    <div id="statusMessage" class="info-msg">Ready. Search for something!</div>
+      <!-- Status Message -->
+      <div id="statusMessage" class="info-msg" role="status" aria-live="polite">Ready. Search for something!</div>
+    </main>
   </div>
 
   <!-- ===== POPUP PLAYER (Fullscreen overlay) ===== -->
-  <div id="playerPopup" class="player-popup">
+  <div id="playerPopup" class="player-popup" role="dialog" aria-modal="true" aria-label="Video player">
     <div class="player-popup-content">
       <div class="player-popup-header">
         <span id="playerTitle" class="player-title">Now Playing</span>
-        <button id="closePlayer" class="player-close-btn">✕</button>
+        <button id="closePlayer" class="player-close-btn" aria-label="Close player">✕</button>
       </div>
       <div class="player-wrapper">
-        <iframe id="playerIframe" allowfullscreen></iframe>
+        <iframe id="playerIframe" allowfullscreen title="Video player"></iframe>
       </div>
       <div id="playerMeta" class="player-meta" style="display:none;">
         <span id="playerRating" class="player-rating"></span>
         <span id="playerRuntime" class="player-runtime"></span>
       </div>
       <div class="player-controls">
-        <button id="popupApiPrev" class="popup-api-btn">◄ Prev API</button>
-        <span id="popupApiInfo" class="popup-api-info">API 1</span>
-        <button id="popupApiNext" class="popup-api-btn">Next API ►</button>
+        <button type="button" id="popupApiPrev" class="popup-api-btn" aria-label="Previous API">&#9664; Prev API</button>
+        <span id="popupApiInfo" class="popup-api-info" aria-live="polite">API 1</span>
+        <button type="button" id="popupApiNext" class="popup-api-btn" aria-label="Next API">Next API &#9654;</button>
       </div>
     </div>
   </div>
 
   <!-- ===== MODAL FOR TV SHOW EPISODE SELECTION ===== -->
-  <div id="episodeModal" class="modal">
+  <div id="episodeModal" class="modal" role="dialog" aria-modal="true" aria-label="Select episode">
     <div class="modal-content">
-      <span class="modal-close">&times;</span>
+      <button class="modal-close" aria-label="Close episode selector">&times;</button>
       <div id="modalBody">
         <!-- Dynamically populated -->
       </div>
