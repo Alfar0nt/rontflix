@@ -1,0 +1,7 @@
+# Python caches
+__pycache__/
+*.pyc
+
+# Skill bulk reference data (regenerable via skill install)
+.agents/skills/ui-ux-pro-max/data/
+.agents/skills/ui-ux-pro-max/scripts/tests/

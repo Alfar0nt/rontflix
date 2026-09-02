@@ -18,6 +18,15 @@ config.js → tmdb.js → ui.js → continue.js → player.js → episodes.js �
 
 There are none. No `package.json`, no build step, no linter, no tests, no CI. Open `index.html` in a browser to run.
 
+## Project Docs & Tooling
+
+| Path | Purpose |
+|---|---|
+| `.ai/PRD.md`, `.ai/tasks.md`, `.ai/ux-flow.md` | Product requirements, task tracker, UX/execution flow |
+| `docs/CHANGELOGS.md` | Versioned changelog (Keep a Changelog + semantic versioning, newest on top, pre-1.0 `0.x.y` format since still in beta) |
+| `.agents/skills/ui-ux-pro-max/` | Local UI/UX design-intelligence skill (search via `scripts/search.py`) |
+| `.gitignore` | Ignores `__pycache__/`, `*.pyc`, and `data/` + `scripts/tests/` under the skills folder |
+
 ## Module Responsibilities
 
 | File | Purpose |

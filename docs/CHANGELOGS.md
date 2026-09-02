@@ -18,6 +18,20 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) conventions w
 
 ---
 
+## [0.0.6] - 2026-09-02
+
+Repo hygiene: gitignore + docs organization.
+
+### Added
+- **`.gitignore`** — ignores Python `__pycache__/` / `*.pyc` and bulk skill reference data (`.agents/skills/ui-ux-pro-max/data/`, `.agents/skills/ui-ux-pro-max/scripts/tests/`) going forward
+- **`docs/CHANGELOGS.md`** restructured to list newest version on top
+
+### Changed
+- Renamed `.ai/ex-flow.md` → `.ai/ux-flow.md` (typo fix)
+- Moved changelog documentation into `docs/` folder
+
+---
+
 ## [0.0.5] - 2026-09-02
 
 UI/UX overhaul (powered by `ui-ux-pro-max` skill).
