@@ -65,6 +65,10 @@ export async function onRequestPost(context) {
 
     await clearFailures(context.env.DB, email);
     await clearIpFailures(context.env.DB, ip);
+  } catch (err) {
+    logError(err, context);
+    return dbError(err);
+  }
 
   return new Response(JSON.stringify({ user: { id: user.id, email: user.email, username: user.username, avatar_url: user.avatar_url || null } }), {
     status: 200,
