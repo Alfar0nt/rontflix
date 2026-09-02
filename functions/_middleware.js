@@ -35,6 +35,8 @@ const CORS_ALLOWLIST = [
   'http://localhost:8787',
   'http://localhost:8812',
   'http://127.0.0.1:8787',
+  'https://tv.dhiarharianto.work',
+  'https://rontflix.pages.dev'
 ];
 
 export async function onRequest(context) {
