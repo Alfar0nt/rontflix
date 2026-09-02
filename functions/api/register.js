@@ -4,6 +4,20 @@ import { checkRateLimit, recordFailure, clearFailures, checkIpRateLimit, clearIp
 import { sessionCookie, clientIp } from "../_middleware.js";
 import { error, dbError } from "../_http.js";
 
+// Helper to log errors server-side for debugging
+function logError(err, context) {
+  console.error(`[register error] ${err.message}`, {
+    stack: err.stack,
+    env: {
+      DB: !!context.env.DB,
+      TMDB_API_KEY: context.env.TMDB_API_KEY ? 'SET (hidden)' : 'MISSING',
+      SESSION_COOKIE: context.env.SESSION_COOKIE,
+      SESSION_TTL_SECONDS: context.env.SESSION_TTL_SECONDS,
+    },
+    email: typeof err.email === 'string' ? err.email : 'N/A',
+  });
+}
+
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const TOKEN_TTL = 30 * 24 * 60 * 60; // seconds (matches SESSION_TTL_SECONDS)
 
@@ -61,6 +75,7 @@ export async function onRequestPost(context) {
     await clearFailures(context.env.DB, email);
     await clearIpFailures(context.env.DB, ip);
   } catch (err) {
+    logError(err, context);
     return dbError(err);
   }
 

@@ -4,6 +4,19 @@ import { checkRateLimit, recordFailure, clearFailures, checkIpRateLimit, recordI
 import { sessionCookie, clientIp } from "../_middleware.js";
 import { error, dbError } from "../_http.js";
 
+function logError(err, context) {
+  console.error(`[login error] ${err.message}`, {
+    stack: err.stack,
+    env: {
+      DB: !!context.env.DB,
+      TMDB_API_KEY: context.env.TMDB_API_KEY ? 'SET (hidden)' : 'MISSING',
+      SESSION_COOKIE: context.env.SESSION_COOKIE,
+      SESSION_TTL_SECONDS: context.env.SESSION_TTL_SECONDS,
+    },
+    email: typeof err.email === 'string' ? err.email : 'N/A',
+  });
+}
+
 const TOKEN_TTL = 30 * 24 * 60 * 60; // seconds
 
 export async function onRequestPost(context) {
@@ -52,6 +65,10 @@ export async function onRequestPost(context) {
 
     await clearFailures(context.env.DB, email);
     await clearIpFailures(context.env.DB, ip);
+  } catch (err) {
+    logError(err, context);
+    return dbError(err);
+  }
   } catch (err) {
     return dbError(err);
   }
