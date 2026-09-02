@@ -22,6 +22,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const TOKEN_TTL = 30 * 24 * 60 * 60; // seconds (matches SESSION_TTL_SECONDS)
 
 export async function onRequestPost(context) {
+  console.log('[register] env keys:', Object.keys(context.env));
   const body = await context.request.json().catch(() => null);
   const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
   const username = typeof body?.username === "string" ? body.username.trim() : "";
