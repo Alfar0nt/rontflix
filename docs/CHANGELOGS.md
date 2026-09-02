@@ -8,13 +8,60 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) conventions w
 
 ## [Unreleased] - Planned
 
-### Pending
-- [ ] Trending hero banner with backdrop image + play button
-- [ ] "Recently Added" / "Upcoming" recommendation row
-- [ ] Genre filters / sort dropdown on search results
-- [ ] Arrow-key navigation between cards
-- [ ] Dark/light theme toggle (persisted in localStorage)
-- [ ] Watch history page (sorted by last watched)
+Future work (pending UI features + the Cloudflare D1 Database & Accounts roadmap) is tracked in **`docs/ROADMAP.md`**.
+
+---
+
+## [0.0.9] - 2026-09-02
+
+Phase 1 of the Database + Accounts roadmap — Cloudflare foundation & schema.
+
+### Added
+- **`functions/_middleware.js`** — Pages Functions shared middleware: attaches the D1 binding, reads/validates the `token` session cookie, resolves the current `context.user`, plus `sessionCookie()`/`clearCookie()` helpers and CORS preflight
+- **`functions/api/`** — directory scaffolded for Phase 2 auth + watchlist endpoints
+- **`migrations/0001_init.sql`** — D1 schema: `users`, `sessions`, `watchlist`, `continue_watching`, `watch_history` tables + indexes
+- **`wrangler.toml`** — Cloudflare Pages + D1 config (`pages_build_output_dir = "."`, real `[[d1_databases]]` `database_id` bound to `rontflix-db`)
+- **`package.json`** — added `wrangler` devDependency + scripts (`dev`, `deploy`, `db:migrate:local`, `db:migrate:remote`); removed obsolete `pnpm` field
+- **`pnpm-workspace.yaml`** — `allowBuilds` entries set so `esbuild`/`workerd` postinstall runs (fixes `pnpm db:migrate` failing on ignored build scripts)
+- Updated `.gitignore` — ignores `node_modules/`, `.wrangler/`, `.env*`, logs
+
+### Changed
+- `docs/ROADMAP.md` — Phase 1 fully marked done (remote D1 created + migration applied)
+
+### Verified
+- Schema valid: `wrangler d1 migrations apply` executed all 11 commands against **local** and **remote** D1 (`rontflix-db`)
+- Worker boots: `wrangler pages dev` compiles, attaches the `env.DB` D1 binding (local), and serves the frontend with static assets (`/`, `style.css`, `app.js` all 200)
+- Unresolved API paths correctly fall back to the SPA shell until Phase 2 endpoints are implemented
+
+---
+
+## [0.0.8] - 2026-09-02
+
+Consolidated future planning into `docs/ROADMAP.md`.
+
+### Added
+- **`docs/ROADMAP.md`** — single source of truth for future work: pending UI features + the 6-phase Cloudflare D1 "Database & Accounts" plan
+
+### Changed
+- `.ai/tasks.md` — now tracks completed work only; future work (pending UI + DB phases) delegated to `docs/ROADMAP.md`
+- `docs/CHANGELOGS.md` `[Unreleased]` — now references `docs/ROADMAP.md` instead of duplicating the pending/DB lists
+- `.ai/PRD.md` — pending-features section trimmed to an overview pointing at `docs/ROADMAP.md` (removed redundant phase detail)
+- `AGENTS.md` — roadmap reference updated from `.ai/tasks.md` to `docs/ROADMAP.md`; `.ai/tasks.md` described as the completed-work tracker
+
+---
+
+## [0.0.7] - 2026-09-02
+
+Database + accounts roadmap (planning).
+
+### Added
+- **Phased TODO plan** in `.ai/tasks.md` — "Database + Accounts (Cloudflare D1)" across 6 phases: foundation/schema → auth → auth UI → watchlist → persist continue-watching/progress/history → harden/test
+- **`docs/DATABASE.md`** — full Cloudflare D1 + Pages Functions implementation guide: schema, wrangler/Pages bindings, session auth, PBKDF2 password hashing, register/login/logout/me/watchlist endpoints, frontend integration, localStorage migration, local dev, deploy, and security checklist
+- Documented Cloudflare D1 data limits and confirmed the stack fits Cloudflare Pages (static hosting cannot run a local-auth backend)
+
+### Changed
+- `.ai/PRD.md` — moved auth/backend out of Non-Goals into a phased "Database + Accounts" roadmap section
+- `AGENTS.md` — added a "Database / Accounts (Roadmap)" section and `docs/DATABASE.md` reference
 
 ---
 

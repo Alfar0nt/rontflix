@@ -45,19 +45,18 @@ Dark cinematic OTT aesthetic informed by the `ui-ux-pro-max` skill design-system
 
 ## Pending Features (TODO)
 
-| Feature | Status |
+Future work is tracked in **`docs/ROADMAP.md`** (source of truth). High-level summary:
+
+| Area | Status |
 |---|---|
-| Trending hero banner with backdrop image + play button | Not started |
-| "Recently Added" or "Upcoming" row | Not started |
-| Genre filters / sort dropdown (year, rating, popularity) on search results | Not started |
-| Arrow-key navigation between cards | Not started |
-| Dark/light theme toggle, persisted in localStorage | Not started |
-| Watch history page listing everything played | Not started |
+| UI enhancements (hero banner, upcoming row, genre/sort, arrow keys, theme toggle) | Not started |
+| **Database + Accounts** (Cloudflare D1 auth, watchlist, persisted state) | Planned — 6 phases |
+
+**Database + Accounts overview:** the app is currently 100% client-side (state in `localStorage`). A real backend is being added via **Cloudflare D1 + Pages Functions** to support login/register and per-user watchlist/state. See `docs/ROADMAP.md` (phased plan) and `docs/DATABASE.md` (implementation guide).
 
 ## Non-Goals
 
-- User authentication / accounts
-- Backend / server-side rendering
+- Traditional self-hosted backend server (Cloudflare Pages is static; use D1 + Pages Functions instead)
 - Mobile native app
 - Content licensing or hosting (relies on TMDB for metadata, Viduki for streaming)
 
@@ -67,3 +66,5 @@ Dark cinematic OTT aesthetic informed by the `ui-ux-pro-max` skill design-system
 - TMDB API key is hardcoded in `config.js` (client-side-only app)
 - Video playback requires Viduki servers to be reachable
 - No TypeScript, no transpilation — browser console is the only debugging tool
+- Backend (when added) stays within Cloudflare: Pages Functions + D1, no separate always-on server
+- Database work requires a Cloudflare account; `wrangler`, `functions/`, and migrations land once Phase 1 starts

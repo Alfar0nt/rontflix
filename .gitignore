@@ -5,3 +5,15 @@ __pycache__/
 # Skill bulk reference data (regenerable via skill install)
 .agents/skills/ui-ux-pro-max/data/
 .agents/skills/ui-ux-pro-max/scripts/tests/
+
+# Node / pnpm
+node_modules/
+*.log
+
+# Cloudflare local state & caches
+.wrangler/
+
+# Local environment
+.env
+.env.*
+.wrangler/state/

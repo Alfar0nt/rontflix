@@ -22,10 +22,16 @@ There are none. No `package.json`, no build step, no linter, no tests, no CI. Op
 
 | Path | Purpose |
 |---|---|
-| `.ai/PRD.md`, `.ai/tasks.md`, `.ai/ux-flow.md` | Product requirements, task tracker, UX/execution flow |
+| `.ai/PRD.md`, `.ai/tasks.md`, `.ai/ux-flow.md` | Product requirements, task tracker (completed work), UX/execution flow |
+| `docs/ROADMAP.md` | Single source of truth for future work (pending UI + Database/Accounts phases) |
 | `docs/CHANGELOGS.md` | Versioned changelog (Keep a Changelog + semantic versioning, newest on top, pre-1.0 `0.x.y` format since still in beta) |
+| `docs/DATABASE.md` | Cloudflare D1 + Pages Functions implementation guide (auth, watchlist, DB schema) |
 | `.agents/skills/ui-ux-pro-max/` | Local UI/UX design-intelligence skill (search via `scripts/search.py`) |
 | `.gitignore` | Ignores `__pycache__/`, `*.pyc`, and `data/` + `scripts/tests/` under the skills folder |
+
+## Database / Accounts (Roadmap)
+
+The app is currently **100% client-side** (state in `localStorage`, no backend). Database + login/register are planned via **Cloudflare D1 + Pages Functions** — see `docs/ROADMAP.md` ("Database + Accounts") for the phased plan and `docs/DATABASE.md` for implementation. Note: Cloudflare Pages is static hosting; it cannot run a traditional Express/local-auth backend, which is why D1 + Pages Functions is the chosen approach.
 
 ## Module Responsibilities
 

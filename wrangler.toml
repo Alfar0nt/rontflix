@@ -1,0 +1,23 @@
+# ============================================
+# r0ntflix — Cloudflare Pages + D1 config
+#
+# This file is used by `wrangler pages dev` (local) and
+# `wrangler pages deploy` (production). The D1 binding can
+# alternatively be added via the Pages dashboard under
+# Settings -> Functions -> D1 database bindings.
+#
+# Before first local/dev run, replace database_id with your
+# real D1 database id from:
+#   wrangler d1 info rontflix-db
+# OR leave the local placeholder and bind via dashboard only.
+# ============================================
+
+name = "rontflix"
+compatibility_date = "2024-11-01"
+pages_build_output_dir = "."
+
+[[d1_databases]]
+binding = "DB"
+database_name = "rontflix-db"
+database_id = "f0dd43bc-8c1b-4667-b474-40b19e9395c4"
+migrations_dir = "migrations"

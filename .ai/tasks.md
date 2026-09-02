@@ -1,6 +1,6 @@
 # Tasks — r0ntflix
 
-Track completed and pending work. Based on README.md checklist and current codebase state.
+Tracks completed work. Future work lives in `docs/ROADMAP.md`; shipped changes are logged in `docs/CHANGELOGS.md`.
 
 ## Completed
 
@@ -21,17 +21,12 @@ Track completed and pending work. Based on README.md checklist and current codeb
 - [x] **Performance** — `decoding="async"` on images, reserved aspect-ratio (no CLS), lazy loading below the fold, Inter font with `display=swap`
 - [x] **Accessibility** — semantic HTML (`header/main/section/article`), `aria-live` status, `role="dialog"` on modals, `aria-pressed` on season buttons, visible focus rings, `prefers-reduced-motion` support, `role="progressbar"` on progress bars
 
-## Pending
+## Forward
 
-- [ ] **Trending hero banner** — backdrop image + play button, top of homepage
-- [ ] **"Recently Added" / "Upcoming" row** — alongside existing recommendation rows
-- [ ] **Genre filters / sort dropdown** — on search results (by year, rating, popularity)
-- [ ] **Full keyboard shortcuts (arrows)** — arrow keys to move between cards (currently Enter/Space/Esc only)
-- [ ] **Dark/light theme toggle** — persisted in localStorage
-- [ ] **Watch history page** — list all played content, sorted by last watched
+- **Pending UI features** and the **Database + Accounts (Cloudflare D1)** phased plan are tracked in **`docs/ROADMAP.md`**.
+- Database implementation guide: **`docs/DATABASE.md`**.
 
 ## Notes
 
-- No formal task tracker; this file serves as the source of truth for open work
-- All pending items are low-risk, client-side-only changes
-- No tests or CI exist — manual browser verification is required for each feature
+- No automated test framework or CI exists — manual browser verification is required for each feature
+- Database phases require a Cloudflare account; `wrangler.toml`, `functions/`, and migrations land once Phase 1 starts

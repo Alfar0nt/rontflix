@@ -1,0 +1,15 @@
+{
+  "name": "rontflix",
+  "version": "0.0.9",
+  "private": true,
+  "description": "Personal movie/TV streaming app (vanilla HTML/CSS/JS) hosted on Cloudflare Pages with D1 backend",
+  "scripts": {
+    "dev": "wrangler pages dev .",
+    "deploy": "wrangler pages deploy .",
+    "db:migrate:local": "wrangler d1 migrations apply rontflix-db --local",
+    "db:migrate:remote": "wrangler d1 migrations apply rontflix-db --remote"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}
