@@ -1,7 +1,7 @@
 // POST /api/register — create a user + start a session
 import { createPasswordHash } from "../_password.js";
-import { checkRateLimit, recordFailure, clearFailures, checkIpRateLimit, clearIpFailures } from "../_rateLimit.js";
-import { sessionCookie, clientIp } from "../_middleware.js";
+import { checkRateLimit, recordFailure, clearFailures } from "../_rateLimit.js";
+import { sessionCookie } from "../_middleware.js";
 import { error, dbError } from "../_http.js";
 
 // Helper to log errors server-side for debugging
@@ -22,17 +22,10 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const TOKEN_TTL = 30 * 24 * 60 * 60; // seconds (matches SESSION_TTL_SECONDS)
 
 export async function onRequestPost(context) {
-  console.log('[register] START');
-  console.log('[register] env keys:', Object.keys(context.env));
-  const body = await context.request.json().catch((e) => {
-    console.log('[register] JSON parse error:', e.message);
-    return null;
-  });
-  console.log('[register] body parsed:', body ? 'ok' : 'null');
+  const body = await context.request.json().catch(() => null);
   const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
   const username = typeof body?.username === "string" ? body.username.trim() : "";
   const password = typeof body?.password === "string" ? body.password : "";
-  console.log('[register] email:', email, 'username:', username, 'password length:', password.length);
 
   // -- validate (never trust the client) --
   if (!EMAIL_RE.test(email)) {
@@ -45,11 +38,7 @@ export async function onRequestPost(context) {
     return error(400, "Password must be between 8 and 128 characters.");
   }
 
-  // -- rate limit (per-IP, then per-email) --
-  const ip = clientIp(context.request);
-  const iprl = await checkIpRateLimit(context.env.DB, ip);
-  if (!iprl.allowed) return error(429, iprl.error);
-
+  // -- rate limit (per-email only) --
   const rl = await checkRateLimit(context.env.DB, email);
   if (!rl.allowed) return error(429, rl.error);
 
@@ -66,9 +55,7 @@ export async function onRequestPost(context) {
     }
 
     // -- hash + insert --
-    console.log('[register] about to hash password (310k iterations)');
     const password_hash = await createPasswordHash(password);
-    console.log('[register] password hashed, length:', password_hash.length);
     const res = await context.env.DB.prepare(
       "INSERT INTO users (email, username, password_hash) VALUES (?, ?, ?)"
     ).bind(email, username, password_hash).run();
