@@ -12,6 +12,30 @@ Future work (pending UI features + the Cloudflare D1 Database & Accounts roadmap
 
 ---
 
+## [0.0.10] - 2026-09-02
+
+Phase 2 of the Database + Accounts roadmap — Authentication (register, login, logout, session check).
+
+### Added
+- **`functions/_password.js`** — PBKDF2 password hashing via Web Crypto (100k SHA-256 iterations, 256-bit, salted `salt:hash` storage, zero external deps)
+- **`functions/_rateLimit.js`** — brute-force protection for auth endpoints (5 failed attempts → lockout)
+- **`functions/api/register.js`** — `POST /api/register`: validates email/username/password, hashes password, detects duplicates (409), creates user + session
+- **`functions/api/login.js`** — `POST /api/login`: verifies credentials (401 on mismatch), issues a session token
+- **`functions/api/logout.js`** — `POST /api/logout`: deletes the session server-side and clears the cookie (204)
+- **`functions/api/me.js`** — `GET /api/me`: resolves the current user from the session cookie (or `null`)
+- **`migrations/0002_auth_attempts.sql`** — `auth_attempts` table for rate limiting (applied to local + remote D1)
+- **`functions/_middleware.js`** — auth middleware now passes the resolved user via `context.data.user`
+
+### Changed
+- `docs/ROADMAP.md` — Phase 2 fully marked done
+
+### Verified
+- Full auth flow tested locally via `wrangler pages dev` + curl: register (201 + httpOnly cookie), duplicate register (409), login (200 + new token), wrong login (401), logout (204 + session invalidated), `/api/me` returns the user with cookie / `null` without
+- Passwords stored as salted PBKDF2 hashes (never plaintext)
+- Rate limiting: 5 failed logins → 429 lockout; validation errors return clear 400s
+
+---
+
 ## [0.0.9] - 2026-09-02
 
 Phase 1 of the Database + Accounts roadmap — Cloudflare foundation & schema.

@@ -154,7 +154,9 @@ migrations_dir = "migrations"
 
 ## 6. Shared Session/Auth Helper (functions/_middleware.js)
 
-Pages Functions support a shared `_middleware.js` that runs for all requests under its path. We use it to read/validate the session cookie and attach `context.user`.
+Pages Functions support a shared `_middleware.js` that runs for all requests under its path. We use it to read/validate the session cookie and resolve the current user.
+
+> **Important — how middleware shares data:** Cloudflare Pages Functions gives each middleware and downstream handler a **fresh** `context` object, so properties you set on `context` in `_middleware.js` are **not** visible to the route handler. To pass state down the chain, use **`context.data`** (e.g. `context.data.user`). This is the single official channel for enriching requests in middleware.
 
 ```js
 // functions/_middleware.js
@@ -167,7 +169,9 @@ export async function onRequest(context) {
     return new Response(null, { status: 204 });
   }
 
-  context.userId = null;
+  context.data.user = null; // <-- use context.data, NOT context.userId
+  context.data.sessionCookie = cookie;
+  context.data.clearCookie = () => "token=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax; Secure";
 
   const header = context.request.headers.get("Cookie") || "";
   const token = (header.match(/(?:^|;\s*)token=([^;]+)/) || [])[1];
@@ -175,9 +179,11 @@ export async function onRequest(context) {
   if (token) {
     try {
       const session = await context.env.DB.prepare(
-        `SELECT user_id FROM sessions WHERE token = ? AND expires_at > unixepoch()`
+        `SELECT s.user_id AS id, u.email, u.username
+         FROM sessions s JOIN users u ON u.id = s.user_id
+         WHERE s.token = ? AND s.expires_at > unixepoch()`
       ).bind(token).first();
-      if (session) context.userId = session.user_id;
+      if (session) context.data.user = session;
     } catch (err) {
       console.error("session lookup failed:", err);
     }
@@ -187,7 +193,7 @@ export async function onRequest(context) {
 }
 ```
 
-> **Note on Cookies + Pages Functions:** Pages Functions run on your specified domain. The `Secure` flag requires HTTPS (Pages provides it). `SameSite=Lax` prevents CSRF for top-level navigation. If you deploy the frontend on a different subdomain than the API, you'll need permissive CORS and a shared cookie domain — simplest is to serve both from the same Pages domain.
+> **Note on Cookies + Pages Functions:** Pages Functions run on your specified domain. The `Secure` flag requires HTTPS (Pages provides it). `SameSite=Lax` prevents CSRF for top-level navigation. If you deploy the frontend on a different subdomain than the API, you'll need permissive CORS and a shared cookie domain — simplest is to serve both from the same Pages domain. The auth endpoints below use the `sessionCookie()` / `clearCookie()` helpers exported from the **actual** `functions/_middleware.js`, which set a `token` cookie with `HttpOnly; Path=/; Max-Age; SameSite=Lax; Secure`.
 
 ---
 
@@ -345,12 +351,9 @@ export async function onRequestPost(context) {
 
 ### 8d. Current user — `GET /api/me`
 ```js
+// The middleware already resolved the user into context.data.user.
 export async function onRequestGet(context) {
-  if (!context.userId) return Response.json({ user: null }, { status: 200 });
-  const user = await context.env.DB.prepare(
-    "SELECT id, email, username FROM users WHERE id = ?"
-  ).bind(context.userId).first();
-  return Response.json({ user });
+  return Response.json({ user: context.data.user || null });
 }
 ```
 
@@ -361,7 +364,8 @@ export async function onRequestGet(context) {
 ### Toggle / Add — `POST /api/watchlist`
 ```js
 export async function onRequestPost(context) {
-  if (!context.userId) return Response.json({ error: "Not authenticated" }, { status: 401 });
+  if (!context.data.user) return Response.json({ error: "Not authenticated" }, { status: 401 });
+  const userId = context.data.user.id;
 
   const { tmdb_id, media_type, title, poster_path } = await context.request.json().catch(() => ({}));
   if (!tmdb_id || !["movie", "tv"].includes(media_type)) {
@@ -372,7 +376,7 @@ export async function onRequestPost(context) {
     `INSERT INTO watchlist (user_id, tmdb_id, media_type, title, poster_path)
      VALUES (?, ?, ?, ?, ?)
      ON CONFLICT(user_id, tmdb_id, media_type) DO NOTHING`
-  ).bind(context.userId, tmdb_id, media_type, title || null, poster_path || null).run();
+  ).bind(userId, tmdb_id, media_type, title || null, poster_path || null).run();
 
   return Response.json({ ok: true });
 }
@@ -381,11 +385,12 @@ export async function onRequestPost(context) {
 ### List — `GET /api/watchlist`
 ```js
 export async function onRequestGet(context) {
-  if (!context.userId) return Response.json({ error: "Not authenticated" }, { status: 401 });
+  if (!context.data.user) return Response.json({ error: "Not authenticated" }, { status: 401 });
+  const userId = context.data.user.id;
   const { results } = await context.env.DB.prepare(
     `SELECT tmdb_id, media_type, title, poster_path, added_at
      FROM watchlist WHERE user_id = ? ORDER BY added_at DESC`
-  ).bind(context.userId).all();
+  ).bind(userId).all();
   return Response.json({ items: results });
 }
 ```
@@ -393,13 +398,14 @@ export async function onRequestGet(context) {
 ### Remove — `DELETE /api/watchlist`
 ```js
 export async function onRequestDelete(context) {
-  if (!context.userId) return Response.json({ error: "Not authenticated" }, { status: 401 });
+  if (!context.data.user) return Response.json({ error: "Not authenticated" }, { status: 401 });
+  const userId = context.data.user.id;
   const url = new URL(context.request.url);
   const tmdb_id = url.searchParams.get("tmdb_id");
   const media_type = url.searchParams.get("media_type");
   await context.env.DB.prepare(
     `DELETE FROM watchlist WHERE user_id = ? AND tmdb_id = ? AND media_type = ?`
-  ).bind(context.userId, Number(tmdb_id), media_type).run();
+  ).bind(userId, Number(tmdb_id), media_type).run();
   return Response.json({ ok: true });
 }
 ```

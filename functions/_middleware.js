@@ -3,10 +3,11 @@
 // Runs for every request to /api/* under functions/
 //
 // Provides:
-//   context.env.DB   - bound D1 database (config via dashboard / wrangler)
-//   context.user     - { id, email, username } or null (from session cookie)
+//   context.env.DB        - bound D1 database (config via dashboard / wrangler)
+//   context.data.user     - { id, email, username } or null (from session cookie)
 //
-// Endpoints can read context.user to authorize scoped queries.
+// NOTE: Pages Functions gives each middleware/handler a fresh `context`.
+// State passed down the chain MUST go through `context.data`.
 // ============================================
 
 const SESSION_COOKIE = 'token';
@@ -27,7 +28,7 @@ export async function onRequest(context) {
     });
   }
 
-  context.user = null;
+  context.data.user = null;
   context.env.SESSION_COOKIE = SESSION_COOKIE;
   context.env.SESSION_TTL_SECONDS = SESSION_TTL_SECONDS;
 
@@ -42,7 +43,7 @@ export async function onRequest(context) {
          WHERE s.token = ? AND s.expires_at > unixepoch()`
       ).bind(token).first();
 
-      if (session) context.user = session;
+      if (session) context.data.user = session;
     } catch (err) {
       console.error('Session lookup failed:', err);
     }

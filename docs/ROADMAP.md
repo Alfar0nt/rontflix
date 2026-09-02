@@ -32,12 +32,12 @@ Small, client-side-only enhancements. They do not require a backend.
 - [x] Verify `wrangler pages dev` runs the Worker locally with the D1 binding attached
 
 ### Phase 2 — Authentication (Register + Login + Logout)
-- [ ] **Register endpoint** (`/api/register`) — validate email + password, hash password (bcrypt/Argon2), insert user
-- [ ] **Login endpoint** (`/api/login`) — verify credentials, issue session token
-- [ ] **Logout endpoint** — invalidate/delete session
-- [ ] **Session check endpoint** (`/api/me`) — return current user for persisted login
-- [ ] Password security: server-side hashing, min-length rule, no plaintext storage
-- [ ] Rate-limit login/register attempts to reduce brute force
+- [x] **Register endpoint** (`/api/register`) — validate email + password, PBKDF2-hash password, insert user, start session
+- [x] **Login endpoint** (`/api/login`) — verify credentials, issue session token
+- [x] **Logout endpoint** (`/api/logout`) — invalidate/delete session
+- [x] **Session check endpoint** (`/api/me`) — return current user for persisted login
+- [x] Password security: server-side PBKDF2 hashing (Web Crypto, 100k iterations), min 8-char rule, no plaintext storage
+- [x] Rate-limit login/register attempts — `auth_attempts` table, 5-fail lockout/429 (migration `0002_auth_attempts.sql`)
 
 ### Phase 3 — Auth UI (Register + Login)
 - [ ] Login form modal/screen with email + password (labels, show/hide password toggle, `autocomplete`, loading->success/error feedback)
