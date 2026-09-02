@@ -45,10 +45,19 @@ rontflix/
 │   │   ├── login.js         # POST /api/login
 │   │   ├── logout.js        # POST /api/logout
 │   │   ├── me.js            # GET  /api/me
-│   │   └── watchlist.js     # GET/POST/DELETE /api/watchlist
-│   └── _middleware.js       # shared session/auth helpers
+│   │   ├── watchlist.js     # GET/POST/DELETE /api/watchlist
+│   │   ├── continue.js      # GET/POST/DELETE /api/continue  (resume/progress)
+│   │   ├── history.js       # GET/POST /api/history          (watch history)
+│   │   └── import.js        # POST /api/import               (localStorage → D1 sync)
+│   ├── _http.js             # shared response/validation helpers (error, json, dbError, intOr, clampNum, s, MEDIA_TYPES)
+│   ├── _middleware.js       # shared session/auth helpers
+│   ├── _password.js         # PBKDF2 hashing
+│   └── _rateLimit.js        # login/register rate limiting
 ├── migrations/
-│   └── 0001_init.sql        # D1 schema
+│   ├── 0001_init.sql                 # users, sessions, watchlist, continue_watching, watch_history
+│   ├── 0002_auth_attempts.sql        # rate-limit table
+│   ├── 0003_history_unique.sql       # watch_history unique index
+│   └── 0004_continue_unique.sql      # continue_watching unique index
 ├── index.html
 ├── app.js
 ├── ... (existing static files)
@@ -194,6 +203,22 @@ export async function onRequest(context) {
 ```
 
 > **Note on Cookies + Pages Functions:** Pages Functions run on your specified domain. `SameSite=Lax` prevents CSRF for top-level navigation. If you deploy the frontend on a different subdomain than the API, you'll need permissive CORS and a shared cookie domain — simplest is to serve both from the same Pages domain. The auth endpoints use the `sessionCookie()` / `clearCookie()` helpers exported from **`functions/_middleware.js`**, which set a `token` cookie with `HttpOnly; Path=/; Max-Age; SameSite=Lax`. The `Secure` flag is applied **only over HTTPS** (`context.data.secureCookie`, derived from the request scheme). This keeps `Secure` in production (Cloudflare Pages is always HTTPS) while allowing the cookie to persist over plain-http LAN dev (e.g. testing from a phone on your local network), where browsers otherwise refuse to store a `Secure` cookie.
+
+---
+
+## 6b. Shared Response/Validation Helper (functions/_http.js)
+
+Added in **Phase 6 (v0.0.16)** to make every endpoint's responses and input handling consistent. Exports small, dependency-free helpers used by all API endpoints:
+
+- `json(data, status = 200)` — `Response.json({ ...data })` with a status.
+- `error(status, message)` — `Response.json({ error: message }, { status })` (also used for 401/400/404/409/429).
+- `dbError(err)` — logs the real error server-side and returns a **safe, non-leaking** JSON `500 {"error":"Internal server error."}`. Wrap every `DB` call in try/catch and return on this.
+- `MEDIA_TYPES` — `["movie", "tv"]`; check `media_type` against it.
+- `intOr(value, fallback = null)` — parse an integer or return the fallback for `tmdb_id`/season/episode.
+- `clampNum(value, min, max, fallback = 0)` — clamp `watched`/`duration` numeric fields.
+- `s(value, maxLength = 200)` — trim + length-cap string fields (title, poster_path, username).
+
+This guarantees (a) the client is never trusted — media type, integer IDs, string bounds, and numeric bounds are all validated server-side; (b) DB errors become consistent JSON 500s instead of opaque Worker failures; and (c) every endpoint returns a uniform `{ error }` / `{ ... }` JSON shape.
 
 ---
 
@@ -414,6 +439,88 @@ export async function onRequestDelete(context) {
 
 ---
 
+## 9b. Continue Watching / Progress Endpoints
+
+Player progress is written to D1 **in addition to** localStorage when a user is signed in. Every throttled progress tick → `POST /api/continue`; removing a title → `DELETE /api/continue`; on login the local list is pushed via `POST /api/import` (below).
+
+### Upsert one entry — `POST /api/continue`
+```js
+// body: { tmdb_id, media_type, season?, episode?, title?, poster_path?, watched?, duration? }
+export async function onRequestPost(context) {
+  if (!context.data.user) return Response.json({ error: "Not authenticated" }, { status: 401 });
+  const userId = context.data.user.id;
+  const body = await context.request.json().catch(() => null);
+  const tmdb_id = Number(body?.tmdb_id);
+  const media_type = body?.media_type;
+  if (!tmdb_id || !["movie", "tv"].includes(media_type))
+    return Response.json({ error: "Invalid media" }, { status: 400 });
+
+  const season = body?.season ? Number(body.season) : null;
+  const episode = body?.episode ? Number(body.episode) : null;
+
+  // delete-then-insert (NOT ON CONFLICT): SQLite treats NULL as DISTINCT in a
+  // UNIQUE constraint, so targetting the (season, episode) key would let
+  // duplicate movie rows (NULL season/episode) be inserted. Migration 0004
+  // adds an expression unique index with COALESCE(,0) as a DB-level guard.
+  const DB = context.env.DB;
+  await DB.prepare(
+    `DELETE FROM continue_watching
+     WHERE user_id = ? AND tmdb_id = ? AND media_type = ?
+       AND COALESCE(season, 0) = COALESCE(?, 0)
+       AND COALESCE(episode, 0) = COALESCE(?, 0)`
+  ).bind(userId, tmdb_id, media_type, season, episode).run();
+
+  await DB.prepare(
+    `INSERT INTO continue_watching
+       (user_id, tmdb_id, media_type, season, episode, title, poster_path, watched, duration, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch())`
+  ).bind(userId, tmdb_id, media_type, season, episode,
+    body?.title || "Untitled", body?.poster_path || null,
+    Number(body?.watched) > 0 ? Number(body.watched) : 0,
+    Number(body?.duration) > 0 ? Number(body.duration) : 0).run();
+
+  return Response.json({ ok: true });
+}
+```
+
+### List — `GET /api/continue`
+```sql
+SELECT tmdb_id, media_type, season, episode, title, poster_path, watched, duration, updated_at
+FROM continue_watching WHERE user_id = ? ORDER BY updated_at DESC
+```
+
+### Remove — `DELETE /api/continue?tmdb_id=&media_type=&season=&episode=`
+No `season`/`episode` (movies or a whole show) removes every matching row; with them, just that episode.
+
+---
+
+## 9c. Watch History Endpoint
+Every `openPlayer()` call records a history row (`POST /api/history`). Replays **bump `played_at`** in place rather than duplicating, enforced by the unique index `idx_history_unique(user_id, tmdb_id, media_type, season, episode)` (migration 0003, using `COALESCE(, -1)` so movie NULLs key consistently).
+
+- **`GET /api/history`** — `SELECT ... FROM watch_history WHERE user_id = ? ORDER BY played_at DESC` (most recently watched first)
+- **`POST /api/history`** — delete old row for `(user_id, tmdb_id, media_type, season, episode)`, then insert fresh with `played_at = unixepoch()`
+
+---
+
+## 9d. Import (login sync) — `POST /api/import`
+Called on login to push the pre-login localStorage continue-watching list into D1.
+
+```js
+// body: { items: [ { tmdb_id, media_type, season?, episode?, title?, poster_path?, watched?, duration? } ] }
+```
+Each item does a delete-then-insert (local value wins). Uses `DB.batch()` for atomicity. Returns `{ ok, imported }`.
+
+---
+
+## 9e. Profile (planned — not yet implemented)
+
+Future `users`-related endpoints (tracked in `docs/ROADMAP.md` Phase 7):
+- **`PATCH/PUT /api/profile`** — update the signed-in user's username, email, and/or avatar (extend `users` with e.g. `avatar_url TEXT`). Changing email must re-issue the session cookie.
+- **`POST /api/profile/password`** — change password; requires the current password (verify via `_password.js`) before updating `password_hash`.
+- Guarded by `context.data.user` (401 when signed out), and every write scoped to the authenticated user's row (`WHERE id = context.data.user.id`).
+
+---
+
 ## 10. Frontend Integration (vanilla JS)
 
 Add a thin API wrapper (e.g. in a new `auth.js` file, loaded after `config.js`). Example:
@@ -464,11 +571,13 @@ Guard watchlist/history UI: only fetch `/api/watchlist` when `currentUser` is se
 
 ## 11. Migration of Existing localStorage State
 
-On successful login, offer to import existing localStorage `continue_watching`/`progress` into D1:
+On successful login, the app calls **`POST /api/import`** (see §9d) to push the pre-login `vidukinet-ContinueWatching`/`vidukinet-Progress` data into D1:
 
-1. Read `vidukinet-ContinueWatching` and `vidukinet-Progress` from localStorage.
-2. POST each entry to a `POST /api/import` endpoint that upserts into `continue_watching`.
-3. Optionally clear the localStorage copy after a successful sync (or keep as offline fallback).
+1. Read `vidukinet-ContinueWatching` and `vidukinet-Progress` from localStorage and map each entry to `{ tmdb_id, media_type, season, episode, title, poster_path, watched, duration }`.
+2. `POST /api/import` upserts each into `continue_watching`.
+3. localStorage is kept as the always-on render source (offline/degraded mode) — it is *not* cleared; D1 is mirrored when signed in. Signing out reverts to the local list.
+
+**D1 remains authoritative across devices when signed in:** on login, `continue.js`'s `loadContinueWatching()` imports local → D1, then pulls D1 → local and re-renders.
 
 ---
 
@@ -504,13 +613,15 @@ Or connect your Git repo to Cloudflare Pages → it auto-builds and deploys incl
 
 ## 14. Security Checklist
 
-- [ ] Passwords hashed with PBKDF2 (or bcryptjs) — never plaintext, never reversible
-- [ ] httpOnly + Secure + SameSite cookies for sessions
-- [ ] Rate-limit login/register (e.g. per-IP) to slow brute force
-- [ ] Validate + sanitize all inputs server-side
-- [ ] Scope every query by `user_id` (authz)
-- [ ] No secrets in client code (session handled by httpOnly cookie; D1 binding is server-side only)
-- [ ] Consider a soft-delete or confirmation before destructive ops
+Status as of **Phase 6 (v0.0.16)**.
+
+- [x] Passwords hashed with PBKDF2 — never plaintext, never reversible
+- [x] httpOnly + Secure + SameSite cookies for sessions (`Secure` only over HTTPS)
+- [x] Rate-limit login/register (`auth_attempts`, 5-fail lockout → 429)
+- [x] Validate + sanitize all inputs server-side — all endpoints use `functions/_http.js` helpers (`MEDIA_TYPES`, `intOr`, `clampNum`, `s`); DB access wrapped in try/catch returning consistent JSON 500s
+- [x] Scope every query by `user_id` (authz) — verified user isolation end-to-end
+- [x] No secrets in client code (session handled by httpOnly cookie; D1 binding is server-side only)
+- [ ] (Optional) Consider a soft-delete or confirmation before destructive ops — not implemented; destructive ops are single-user scoped deletes, acceptable for this app
 
 ---
 

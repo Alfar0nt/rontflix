@@ -56,16 +56,24 @@ Small, client-side-only enhancements. They do not require a backend.
 - [x] Watchlist persistence in D1 (not localStorage) once logged in; guarded when logged out (prompts sign-in)
 
 ### Phase 5 — Persist Continue Watching / Progress / History to DB
-- [ ] Sync `continue_watching` + progress from localStorage → D1 when a user logs in (migration)
-- [ ] Player progress writes to D1 (in addition to/ instead of localStorage) when authenticated
-- [ ] **Watch history** — store every played item, sorted by last watched
-- [ ] **Watch history UI** — dedicated section listing everything played, with resume/continue
-- [ ] Offline/degraded mode — keep working from localStorage cache when not logged in or offline
+- [x] Sync `continue_watching` + progress from localStorage → D1 when a user logs in (migration) — `POST /api/import` batch upsert (local wins) on login
+- [x] Player progress writes to D1 (in addition to/ instead of localStorage) when authenticated — every 2s progress tick → `POST /api/continue`
+- [x] **Watch history** — store every played item, sorted by last watched — `POST /api/history`/`GET /api/history` (replays bump `played_at` in place via a unique index)
+- [x] **Watch history UI** — dedicated section listing everything played, with resume/continue (currently a homepage row; planned to move onto the Profile page in Phase 7)
+- [x] Offline/degraded mode — keep working from localStorage cache when not logged in or offline (localStorage remains the always-on render source; all D1 writes are gated behind a signed-in user)
 
 ### Phase 6 — Harden, Test & Polish
-- [ ] Input validation + sanitization on all API endpoints (never trust the client)
-- [ ] Authz checks on every endpoint (user can only read/write their own data)
-- [ ] Error handling + consistent JSON responses from all Functions
-- [ ] Manual e2e test: register → login → add watchlist → play → resume via another session
-- [ ] Update `docs/DATABASE.md` with final schema + deployment steps
-- [ ] Decide whether to keep localStorage path for guest/not-logged-in users or require login
+- [x] Input validation + sanitization on all API endpoints (never trust the client) — added `functions/_http.js` shared helpers (`error`, `json`, `dbError`, `MEDIA_TYPES`, `intOr`, `clampNum`, `s`); all endpoints now validate media type, clamp numeric bounds, and length-cap strings
+- [x] Authz checks on every endpoint (user can only read/write their own data) — every query scoped by `context.data.user.id`; verified user isolation end-to-end (second user sees empty data and cannot affect the first user's rows)
+- [x] Error handling + consistent JSON responses from all Functions — DB access wrapped in try/catch returning stable JSON 500; every endpoint returns `{ error }` or `{ ... }` JSON with proper status codes; e2e verified 400/401/409/429/201/200
+- [x] Manual e2e test: register → login → add watchlist → play → resume via another session — ran against local `wrangler pages dev`; verified two-user authz isolation, 401 gates, validation rejects, import cap (200), and progress clamps
+- [x] Update `docs/DATABASE.md` with final schema + deployment steps
+- [x] Decide whether to keep localStorage path for guest/not-logged-in users or require login — **decision: keep the guest localStorage path.** Browsing, search, and continue-watching work without an account; login is only required for cross-device sync (watchlist, history, server-side continue). localStorage remains the always-on render source; D1 writes are gated behind a signed-in user.
+
+### Phase 7 — Profile
+- [ ] **Profile page** — dedicated "Profile" screen the signed-in user can open; make the header username/avatar link to it
+- [ ] **View & edit profile** — show profile picture (avatar), username, email; allow the user to change their **profile picture**, **username**, **email**, and **password**
+- [ ] Backend endpoints — `PATCH/PUT /api/profile` (update username/email/avatar) and `POST /api/profile/password` (change password, requires current password); re-issue session cookie on email change
+- [ ] **Avatar/picture storage** — pick a mechanism (e.g. upload → Cloudflare R2 / image URL in `users.avatar_url`, or a set of presets/color-initial avatars); extend the `users` table migration
+- [ ] Guard — profile only accessible when signed in (mirrors the watchlist guard); sign-in prompt otherwise
+- [ ] **Move Watch History onto the Profile page** — remove the homepage "Watch History" row; render it (with resume/continue) on the profile page instead. (Currently on the homepage from Phase 5.)

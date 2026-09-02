@@ -50,6 +50,7 @@ function openPlayer(media) {
 
     loadPlayerMeta({ id, type });
     updateContinueEntry(currentMedia, null);
+    if (typeof recordHistory === 'function') recordHistory(currentMedia);
     setStatus(`Now playing: ${title} using API ${apiVersion}`, '');
 }
 

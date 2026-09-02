@@ -2,6 +2,7 @@
 import { createPasswordHash } from "../_password.js";
 import { checkRateLimit, recordFailure, clearFailures } from "../_rateLimit.js";
 import { sessionCookie } from "../_middleware.js";
+import { error, dbError } from "../_http.js";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const TOKEN_TTL = 30 * 24 * 60 * 60; // seconds (matches SESSION_TTL_SECONDS)
@@ -14,46 +15,55 @@ export async function onRequestPost(context) {
 
   // -- validate (never trust the client) --
   if (!EMAIL_RE.test(email)) {
-    return Response.json({ error: "Please enter a valid email address." }, { status: 400 });
+    return error(400, "Please enter a valid email address.");
   }
-  if (username.length < 3) {
-    return Response.json({ error: "Username must be at least 3 characters." }, { status: 400 });
+  if (username.length < 3 || username.length > 40) {
+    return error(400, "Username must be between 3 and 40 characters.");
   }
-  if (password.length < 8) {
-    return Response.json({ error: "Password must be at least 8 characters." }, { status: 400 });
+  if (password.length < 8 || password.length > 128) {
+    return error(400, "Password must be between 8 and 128 characters.");
   }
 
   // -- rate limit --
   const rl = await checkRateLimit(context.env.DB, email);
-  if (!rl.allowed) return Response.json({ error: rl.error }, { status: 429 });
+  if (!rl.allowed) return error(429, rl.error);
 
-  // -- duplicate check --
-  const existing = await context.env.DB.prepare(
-    "SELECT id FROM users WHERE email = ?"
-  ).bind(email).first();
-  if (existing) {
-    await recordFailure(context.env.DB, email);
-    return Response.json({ error: "Email already registered." }, { status: 409 });
+  let userId;
+  let token;
+  try {
+    // -- duplicate check --
+    const existing = await context.env.DB.prepare(
+      "SELECT id FROM users WHERE email = ?"
+    ).bind(email).first();
+    if (existing) {
+      await recordFailure(context.env.DB, email);
+      return error(409, "Email already registered.");
+    }
+
+    // -- hash + insert --
+    const password_hash = await createPasswordHash(password);
+    const res = await context.env.DB.prepare(
+      "INSERT INTO users (email, username, password_hash) VALUES (?, ?, ?)"
+    ).bind(email, username, password_hash).run();
+    userId = res.meta.last_row_id;
+
+    // -- create session --
+    token = crypto.randomUUID();
+    const now = Math.floor(Date.now() / 1000);
+    await context.env.DB.prepare(
+      "INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)"
+    ).bind(token, userId, now + TOKEN_TTL).run();
+
+    await clearFailures(context.env.DB, email);
+  } catch (err) {
+    return dbError(err);
   }
 
-  // -- hash + insert --
-  const password_hash = await createPasswordHash(password);
-  const res = await context.env.DB.prepare(
-    "INSERT INTO users (email, username, password_hash) VALUES (?, ?, ?)"
-  ).bind(email, username, password_hash).run();
-  const userId = res.meta.last_row_id;
-
-  // -- create session --
-  const token = crypto.randomUUID();
-  const now = Math.floor(Date.now() / 1000);
-  await context.env.DB.prepare(
-    "INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)"
-  ).bind(token, userId, now + TOKEN_TTL).run();
-
-  await clearFailures(context.env.DB, email);
-
-  return Response.json(
-    { user: { id: userId, email, username } },
-    { status: 201, headers: { "Set-Cookie": sessionCookie(token, TOKEN_TTL, context.data.secureCookie) } }
-  );
+  return new Response(JSON.stringify({ user: { id: userId, email, username } }), {
+    status: 201,
+    headers: {
+      "Content-Type": "application/json",
+      "Set-Cookie": sessionCookie(token, TOKEN_TTL, context.data.secureCookie),
+    },
+  });
 }

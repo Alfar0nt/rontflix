@@ -8,7 +8,76 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) conventions w
 
 ## [Unreleased] - Planned
 
-Future work (pending UI features + the Cloudflare D1 Database & Accounts roadmap) is tracked in **`docs/ROADMAP.md`**.
+**Phase 7 — Profile** (planned, not yet implemented): a signed-in user can open a Profile page to view and customize their **profile picture/avatar, username, email, and password** (new endpoints `PATCH/PUT /api/profile` + `POST /api/profile/password`). The profile is only accessible when signed in (guard). **Watch History moves onto the Profile page** — the homepage "Watch History" row is removed and re-rendered on the profile instead.
+
+Other future work (pending UI features + remaining Database & Accounts phases) is tracked in **`docs/ROADMAP.md`**.
+
+---
+
+## [0.0.16] - 2026-09-02
+
+**Phase 6 — Harden, Test & Polish.** All API endpoints refactored for consistent input validation, authz, and error handling, then verified end-to-end.
+
+### Added
+- `functions/_http.js` — shared HTTP helpers: `error(status, msg)`, `json(data, status)`, `dbError(err)` (safe JSON 500), plus validators `MEDIA_TYPES`, `intOr`, `clampNum`, and `s` (trim + length-cap).
+
+### Changed
+- `functions/api/*.js` (`register`, `login`, `logout`, `watchlist`, `continue`, `history`, `import`) now use the shared helpers and validate everything server-side:
+  - Media type must be `movie`/`tv`; `tmdb_id` must be an integer.
+  - String fields (title, poster, username) trimmed and length-capped; `watched`/`duration` number-clamped.
+  - Username and password length bounds on register (3–40 username, 8–128 password).
+  - DB access wrapped in try/catch returning a consistent, non-leaking JSON 500.
+- `/api/import` caps a batch at 200 rows per request.
+
+### Verified (manual e2e against local `wrangler pages dev`)
+- Register (201) + validation rejects (400 short password / bad email, 409 duplicate), `GET /api/me` returns user.
+- Watchlist POST/GET/DELETE, continue POST/GET, history POST/GET for user A all return expected data; `watched`/`duration` properly clamped.
+- **Authz isolation**: user B sees empty watchlist/continue/history, and B's delete of A's row leaves A's data intact (all queries scoped by `user_id`).
+- **401 gates**: logged-out POST/GET to watchlist/continue/history return 401 JSON.
+- **Import cap**: 250-item payload imported exactly 200 rows.
+
+### Decision
+- Guest localStorage path is **kept**: browsing, search, and continue-watching work without an account; login is only required for cross-device sync (watchlist, history, server-side continue). localStorage remains the always-on render source; D1 writes are gated behind a signed-in user.
+
+---
+
+## [0.0.15] - 2026-09-02
+
+Bugfix: clicking the Add-to-watchlist button on a card no longer also plays the media.
+
+### Fixed
+- Clicking the "+ Watchlist"/"✓ Saved" toggle on a movie/TV card was **also** starting the player. This happened because the card's play listener is attached directly to the card element, and the delegated watchlist handler's `stopPropagation()` only prevented further bubbling to ancestors of `document` — the card's own click handler had already run by the time the event reached `document`.
+- `ui.js` `attachCardListeners()` (the single shared card play listener used by search, recommendation, and watchlist rows) now ignores clicks and keyboard activation that originate from the `.watch-btn`, so toggling the watchlist never triggers playback.
+
+### Verified
+- Local simulation of the event flow (click on `.watch-btn` inside a `.movie-card`): `toggleWatchlist()` runs, `playFromCard()` does **not**. Guard present in served `ui.js`.
+
+---
+
+## [0.0.14] - 2026-09-02
+
+Phase 5 of the Database + Accounts roadmap — Persist Continue Watching / Progress / History to DB.
+
+### Added
+- **`functions/api/continue.js`** — `GET` (list current user's continue-watching, newest first), `POST` (upsert one entry per progress tick), `DELETE` (remove by `tmdb_id`+`media_type`, optional `season`/`episode`); user-scoped (401 when logged out)
+- **`functions/api/import.js`** — `POST /api/import` batch sync of the pre-login localStorage continue-watching entries into D1 (local value wins); called on login
+- **`functions/api/history.js`** — `GET` (list current user's watch history, most recently played first), `POST` (record/upsert a played item; replays bump `played_at` in place instead of duplicating); user-scoped (401 when logged out)
+- **`history.js`** (frontend) — D1-backed **Watch History** row on the homepage with resume cards, `loadHistory()` + `recordHistory()`; shown only when signed in (guard)
+- **`continue.js`** (frontend) — `loadContinueWatching()` (imports local → D1 then pulls D1 → local on login), `importContinueToServer()`, and server mirroring: progress ticks → `POST /api/continue`, remove → `DELETE /api/continue` when signed in
+- **`index.html`** — `#historySection`/`#historyContainer` row; `history.js` loaded after `watchlist.js` (script order: `config → tmdb → ui → auth → watchlist → history → continue → player → episodes → search → recommendations → app`)
+- **`style.css`** — `.history-section` spacing (reuses watchlist grid + continue-card styles)
+
+### Changed
+- `player.js` — records watch history on play: `openPlayer()` calls `recordHistory(currentMedia)`
+- `auth.js` — after session restore / login / register now also calls `initHistory()` and `loadContinueWatching()` (alongside `initWatchlist()`)
+- `app.js` — progress → D1 write is handled inside `updateContinueEntry()` (guarded by signed-in user)
+
+### Fixed
+- SQLite treats `NULL` as **distinct** in a `UNIQUE` constraint, so the original `UNIQUE(user_id, tmdb_id, media_type, season, episode)` let duplicate **movie** rows (NULL season/episode) be inserted. Migration **`0004_continue_unique.sql`** adds an expression unique index (`COALESCE(,0)`) and dedupes; `continue.js`/`import.js` now use delete-then-insert. Movies and shows now both dedupe correctly.
+
+### Verified
+- Backend via `wrangler pages dev` + curl: register→cookie; `POST /api/import` batch (2 items, and importing the same movie again stays a single row); `POST /api/continue` progress tick updates `watched`; `GET /api/continue` lists newest-first; `DELETE /api/continue` removes; `POST /api/history` records movie + TV; replay bumps to top with **no duplicate** (`count` stays 1 each); all unauthenticated calls → 401
+- Frontend: `history.js` + `continue.js` served (200); history section wired; continue-watching server sync functions present
 
 ---
 

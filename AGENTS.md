@@ -9,7 +9,7 @@ Vanilla HTML/CSS/JS Netflix-like streaming app. No framework, no bundler, no dep
 `index.html` loads scripts in dependency order — do not reorder:
 
 ```
-config.js → tmdb.js → ui.js → auth.js → watchlist.js → continue.js → player.js → episodes.js → search.js → recommendations.js → app.js
+config.js → tmdb.js → ui.js → auth.js → watchlist.js → history.js → continue.js → player.js → episodes.js → search.js → recommendations.js → app.js
 ```
 
 `app.js` bootstraps on `window.load` (calls `renderContinueWatching()` + `loadRecommendations()`).
@@ -40,10 +40,11 @@ The app is currently **100% client-side** (state in `localStorage`, no backend).
 | `config.js` | Constants: TMDB API key, base URLs, localStorage keys, cache TTL, `ROW_SIZE` |
 | `tmdb.js` | TMDB API layer with localStorage caching + retry; builds Viduki streaming URLs |
 | `ui.js` | DOM refs, shared helpers (`escapeHtml`, `setStatus`, `formatRuntime`, `mediaCardHTML`) |
-| `continue.js` | "Continue Watching" persistence and card rendering |
-| `player.js` | Popup iframe player, API switching, meta loading |
+| `continue.js` | "Continue Watching" persistence and card rendering (localStorage always; D1-mirrored when signed in) |
+| `player.js` | Popup iframe player, API switching, meta loading, watch-history recording |
 | `episodes.js` | TV season/episode picker modal |
 | `recommendations.js` | Homepage recommendation rows (last 2 lazy-render via `IntersectionObserver`) |
+| `history.js` | D1-backed "Watch History" row (resume cards, `recordHistory` on play), shown only when signed in |
 | `app.js` | Global listeners, init, `postMessage` handling from Viduki |
 
 ## Key Architecture Facts

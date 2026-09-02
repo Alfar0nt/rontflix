@@ -26,12 +26,21 @@ Tracks completed work. Future work lives in `docs/ROADMAP.md`; shipped changes a
 - [x] **Phase 3 — Watchlist logged-out guard** — logged-out users see a "Sign in to save your watchlist" prompt in the watchlist row instead of saved items; the card toggle button opens the sign-in modal. (Profile UI not yet built; recheck when one lands)
 - [x] **Cookie `Secure` fix (0.0.12)** — auth cookie `Secure` flag now conditional on request scheme (HTTPS only), so login persists over plain-http LAN (phone testing); production remains HTTPS+`Secure`
 - [x] **Phase 4 — Watchlist** — `functions/api/watchlist.js` (GET/POST/DELETE, user-scoped, 401 without auth), `watchlist.js` (D1-backed state, optimistic toggle, "My Watchlist" homepage row, delegated `.watch-btn` handler), toggle button on every media card via `mediaCardHTML`→`watchButtonHTML`. Verified: add/list/remove round-trip + 401 guards
+- [x] **Phase 4 fix — stale logged-out guard** — removed the premature `initWatchlist()` from `app.js` load (auth.js owns it, after `checkSession()` resolves) and reset `watchlistLoaded` in `initWatchlist()` so a logged-in reload shows the watchlist instead of a stuck guard
+- [x] **Phase 5 — Persist Continue Watching / Progress / History to DB** — `functions/api/continue.js` (GET/POST/DELETE), `functions/api/history.js` (GET/POST, replay bumps `played_at` via unique index), `functions/api/import.js` (login sync, batch delete-then-insert); frontend `history.js` (D1-backed Watch History row) + `continue.js` (import + D1 mirror on progress/remove). Migrations `0003_history_unique.sql` + `0004_continue_unique.sql`. Offline/degraded mode retained (localStorage is always the render source; D1 writes gated behind a signed-in user). Verified: import dedupe (movies with NULL season stay a single row), continue GET/POST/DELETE, history replay no-duplicate bump, 401 guards
+- [x] **Bugfix (0.0.15) — watch-btn no longer plays the media** — `ui.js` `attachCardListeners()` ignores clicks/keyboard originating from the `.watch-btn`, so clicking "+ Watchlist"/"✓ Saved" only toggles the watchlist and never starts playback. Verified via event-flow simulation (served `ui.js` shows the guard).
+- [x] **Phase 6 — Harden, Test & Polish** — added `functions/_http.js` shared helpers (`error`, `json`, `dbError`, `MEDIA_TYPES`, `intOr`, `clampNum`, `s`); refactored all endpoints (`register`, `login`, `logout`, `watchlist`, `continue`, `history`, `import`) for server-side validation (media type, integer `tmdb_id`, capped/trimmed strings, clamped numerics, username/password bounds), authz (every query scoped by `user_id`), and try/catch consistent JSON 500s; `/api/import` capped at 200 rows. Verified end-to-end via local `wrangler pages dev`: two-user authz isolation, 401 gates, validation rejects (400/409), 201/200/204, progress clamps, import cap. **Decision: keep the guest localStorage path** — browsing/search/continue work logged-out; login only required for cross-device sync. Docs updated (ROADMAP Phase 6, CHANGELOGS 0.0.16, DATABASE.md, tasks.md).
 
 ## Forward
 
-- **Pending UI features** and the **Database + Accounts (Cloudflare D1)** phased plan are tracked in **`docs/ROADMAP.md`**.
+- **Pending UI features** and the **Database + Accounts (Cloudflare D1)** phased plan (incl. **Phase 7 — Profile**) are tracked in **`docs/ROADMAP.md`**.
 - Database implementation guide: **`docs/DATABASE.md`**.
-- Next up: **Phase 5 — Persist Continue Watching / Progress / History to DB**.
+- Next up: **Phase 7 — Profile page** (planned; see ROADMAP).
+- **Planned: Profile feature** — a signed-in user can open a Profile page to view and customize:
+  - **Profile picture / avatar**, **username**, **email**, **password**
+  - Endpoints: `PATCH/PUT /api/profile` (username/email/avatar) + `POST /api/profile/password` (current password required)
+  - Only accessible when signed in (guard, like the watchlist)
+- **Planned: Move Watch History to the Profile page** — remove the homepage "Watch History" row and render it (with resume/continue) on the Profile page instead.
 
 ## Notes
 

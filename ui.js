@@ -145,10 +145,16 @@ function playFromCard(card) {
 
 function attachCardListeners(container) {
     container.querySelectorAll('.movie-card').forEach(card => {
-        card.addEventListener('click', () => playFromCard(card));
+        card.addEventListener('click', (e) => {
+            // Don't let a click on the watchlist toggle also play the media.
+            if (e.target.closest('.watch-btn')) return;
+            playFromCard(card);
+        });
         card.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
+                // Ignore when a nested control (e.g. watch-btn) is focused.
+                if (e.target.closest('.watch-btn')) return;
                 playFromCard(card);
             }
         });

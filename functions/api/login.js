@@ -2,6 +2,7 @@
 import { verifyPassword } from "../_password.js";
 import { checkRateLimit, recordFailure, clearFailures } from "../_rateLimit.js";
 import { sessionCookie } from "../_middleware.js";
+import { error, dbError } from "../_http.js";
 
 const TOKEN_TTL = 30 * 24 * 60 * 60; // seconds
 
@@ -11,33 +12,42 @@ export async function onRequestPost(context) {
   const password = typeof body?.password === "string" ? body.password : "";
 
   if (!email || !password) {
-    return Response.json({ error: "Email and password are required." }, { status: 400 });
+    return error(400, "Email and password are required.");
   }
 
   // -- rate limit based on email --
   const rl = await checkRateLimit(context.env.DB, email);
-  if (!rl.allowed) return Response.json({ error: rl.error }, { status: 429 });
+  if (!rl.allowed) return error(429, rl.error);
 
-  const user = await context.env.DB.prepare(
-    "SELECT * FROM users WHERE email = ?"
-  ).bind(email).first();
+  let user = null;
+  let token;
+  try {
+    user = await context.env.DB.prepare(
+      "SELECT * FROM users WHERE email = ?"
+    ).bind(email).first();
 
-  if (!user || !(await verifyPassword(password, user.password_hash))) {
-    await recordFailure(context.env.DB, email);
-    return Response.json({ error: "Invalid email or password." }, { status: 401 });
+    if (!user || !(await verifyPassword(password, user.password_hash))) {
+      await recordFailure(context.env.DB, email);
+      return error(401, "Invalid email or password.");
+    }
+
+    // -- issue session --
+    token = crypto.randomUUID();
+    const now = Math.floor(Date.now() / 1000);
+    await context.env.DB.prepare(
+      "INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)"
+    ).bind(token, user.id, now + TOKEN_TTL).run();
+
+    await clearFailures(context.env.DB, email);
+  } catch (err) {
+    return dbError(err);
   }
 
-  // -- issue session --
-  const token = crypto.randomUUID();
-  const now = Math.floor(Date.now() / 1000);
-  await context.env.DB.prepare(
-    "INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)"
-  ).bind(token, user.id, now + TOKEN_TTL).run();
-
-  await clearFailures(context.env.DB, email);
-
-  return Response.json(
-    { user: { id: user.id, email: user.email, username: user.username } },
-    { status: 200, headers: { "Set-Cookie": sessionCookie(token, TOKEN_TTL, context.data.secureCookie) } }
-  );
+  return new Response(JSON.stringify({ user: { id: user.id, email: user.email, username: user.username } }), {
+    status: 200,
+    headers: {
+      "Content-Type": "application/json",
+      "Set-Cookie": sessionCookie(token, TOKEN_TTL, context.data.secureCookie),
+    },
+  });
 }

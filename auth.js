@@ -42,6 +42,7 @@ async function logout() {
     currentUser = null;
     renderAuthArea();
     if (typeof initWatchlist === 'function') initWatchlist();
+    if (typeof initHistory === 'function') initHistory();
 }
 
 async function checkSession() {
@@ -263,6 +264,7 @@ async function handleAuthSubmit(mode) {
 
         // Refresh the D1-backed watchlist for the new session.
         if (typeof initWatchlist === 'function') initWatchlist();
+        if (typeof initHistory === 'function') initHistory();
     } catch (err) {
         setAuthMsg(err.message || 'Something went wrong.', 'error');
         setAuthLoading(false);
@@ -295,5 +297,7 @@ window.addEventListener('load', () => {
     checkSession().then(() => {
         renderAuthArea();
         if (typeof initWatchlist === 'function') initWatchlist();
+        if (typeof initHistory === 'function') initHistory();
+        if (typeof loadContinueWatching === 'function') loadContinueWatching();
     });
 });

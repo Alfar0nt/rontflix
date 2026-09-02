@@ -4,13 +4,15 @@
 
 1. Browser loads `index.html` — a single-page app shell
 2. Scripts load in order (no bundler, no deferred imports):
-   `config.js → tmdb.js → ui.js → auth.js → watchlist.js → continue.js → player.js → episodes.js → search.js → recommendations.js → app.js`
+   `config.js → tmdb.js → ui.js → auth.js → watchlist.js → history.js → continue.js → player.js → episodes.js → search.js → recommendations.js → app.js`
 3. `app.js` registers global listeners and fires on `window.load`:
    - Restores last-selected Viduki API from `localStorage`
    - Calls `initAuth()` — renders the header auth area (Sign in button, or username/avatar + Log out)
-   - Calls `initWatchlist()` — if logged in, fetches the D1-backed watchlist and renders the "My Watchlist" row
-   - Calls `renderContinueWatching()` — reads `localStorage`, renders cards
    - Calls `loadRecommendations()` — 4 parallel TMDB API calls, renders rows
+4. After `checkSession()` resolves (auth.js), the app:
+   - Calls `initWatchlist()` — D1-backed watchlist row (or sign-in guard)
+   - Calls `initHistory()` — D1-backed Watch History row
+   - Calls `loadContinueWatching()` — imports local → D1 then pulls D1 → local, renders Continue Watching
 
 ## Auth Session
 
@@ -99,7 +101,9 @@ Two layers now exist:
 ### Cloudflare D1 (server-side, per logged-in account, cross-device)
 - `users` / `sessions` — auth (via Cloudflare Pages Functions + D1)
 - `watchlist` — saved titles (`/api/watchlist` GET/POST/DELETE), rendered in the "My Watchlist" row when logged in
-- Continue Watching / progress still lives in `localStorage` only (see roadmap Phase 5 for D1 sync)
+- `continue_watching` — resume/progress mirrored from localStorage (`/api/continue` on progress ticks + remove; `/api/import` on login sync)
+- `watch_history` — every played item (`/api/history` POST on play + GET), rendered in the "Watch History" row when logged in
+- localStorage is always the render source (offline/degraded mode); D1 writes are gated behind a signed-in user
 
 ## External Dependencies (Runtime)
 
