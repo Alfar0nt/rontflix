@@ -1,7 +1,7 @@
 // POST /api/register — create a user + start a session
 import { createPasswordHash } from "../_password.js";
-import { checkRateLimit, recordFailure, clearFailures } from "../_rateLimit.js";
-import { sessionCookie } from "../_middleware.js";
+import { checkRateLimit, recordFailure, clearFailures, checkIpRateLimit, clearIpFailures } from "../_rateLimit.js";
+import { sessionCookie, clientIp } from "../_middleware.js";
 import { error, dbError } from "../_http.js";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -24,7 +24,11 @@ export async function onRequestPost(context) {
     return error(400, "Password must be between 8 and 128 characters.");
   }
 
-  // -- rate limit --
+  // -- rate limit (per-IP, then per-email) --
+  const ip = clientIp(context.request);
+  const iprl = await checkIpRateLimit(context.env.DB, ip);
+  if (!iprl.allowed) return error(429, iprl.error);
+
   const rl = await checkRateLimit(context.env.DB, email);
   if (!rl.allowed) return error(429, rl.error);
 
@@ -55,6 +59,7 @@ export async function onRequestPost(context) {
     ).bind(token, userId, now + TOKEN_TTL).run();
 
     await clearFailures(context.env.DB, email);
+    await clearIpFailures(context.env.DB, ip);
   } catch (err) {
     return dbError(err);
   }

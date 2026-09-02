@@ -142,12 +142,13 @@ function renderWatchlistRow() {
     watchlistSection.classList.remove('is-guarded');
     watchlistContainer.className = 'watchlist-grid';
     watchlistContainer.innerHTML = items.map(item => {
-        const poster = item.poster_path ? `${IMG_BASE}${item.poster_path}` : POSTER_PLACEHOLDER;
+        const safePoster = escapeHtml(item.poster_path || '');
         const safeTitle = escapeHtml(item.title);
         const typeLabel = item.media_type === 'tv' ? 'TV' : 'Movie';
+        const poster = safePoster ? `${IMG_BASE}${safePoster}` : POSTER_PLACEHOLDER;
 
         return `
-        <article class="movie-card" data-id="${item.tmdb_id}" data-type="${item.media_type}" data-title="${safeTitle}" data-poster="${item.poster_path || ''}" data-year="" tabindex="0" role="button" aria-label="Play ${safeTitle} (${typeLabel})">
+        <article class="movie-card" data-id="${item.tmdb_id}" data-type="${item.media_type}" data-title="${safeTitle}" data-poster="${safePoster}" data-year="" tabindex="0" role="button" aria-label="Play ${safeTitle} (${typeLabel})">
         ${watchButtonHTML(item.tmdb_id, item.media_type, item.title, item.poster_path)}
         <img src="${poster}" alt="${safeTitle}" loading="lazy" decoding="async" />
         <div class="info">

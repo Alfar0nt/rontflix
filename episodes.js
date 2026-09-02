@@ -190,7 +190,7 @@ async function renderEpisodesFromShow(tmdbId, seasonNumber) {
             }
         }
         console.error('Error loading episodes:', err);
-        container.innerHTML = `<div class="no-episodes">Error loading episodes: ${err.message}. Try selecting a different season.</div>`;
+        container.innerHTML = `<div class="no-episodes">Error loading episodes. Try selecting a different season.</div>`;
         container.setAttribute('aria-busy', 'false');
     }
 }

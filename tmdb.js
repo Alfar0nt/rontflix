@@ -19,7 +19,9 @@ function setTMDBCache(cache) {
 
 async function tmdbGet(path, params = {}) {
     const query = new URLSearchParams(params).toString();
-    const url = `${TMDB_BASE}${path}?api_key=${TMDB_API_KEY}${query ? '&' + query : ''}`;
+    // Requests go to the local /api/tmdb Pages Function, which injects the
+    // secret API key server-side so no key is exposed in the browser bundle.
+    const url = `${TMDB_BASE}?path=${encodeURIComponent(path)}${query ? '&' + query : ''}`;
 
     // Serve from cache when fresh
     const cache = getTMDBCache();

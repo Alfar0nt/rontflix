@@ -144,15 +144,16 @@ function renderContinueWatching() {
 
     continueSection.style.display = 'block';
     continueContainer.innerHTML = entries.slice(0, 12).map(entry => {
-        const poster = entry.poster_path ? `${IMG_BASE}${entry.poster_path}` : POSTER_PLACEHOLDER;
+        const safePoster = escapeHtml(entry.poster_path || '');
+        const poster = safePoster ? `${IMG_BASE}${safePoster}` : POSTER_PLACEHOLDER;
         const safeTitle = escapeHtml(entry.title);
         const pct = continueProgressPercent(entry);
         const typeLabel = entry.type === 'tv' ? 'TV' : 'Movie';
-        const epLabel = entry.type === 'tv' && entry.season ? ` • S${entry.season}E${entry.episode}` : '';
+        const epLabel = entry.type === 'tv' && entry.season ? ` • S${escapeHtml(entry.season)}E${escapeHtml(entry.episode)}` : '';
 
         return `
-        <article class="continue-card" data-id="${entry.id}" data-type="${entry.type}" data-title="${safeTitle}" data-poster="${entry.poster_path || ''}" data-year="${entry.year}" data-season="${entry.season || ''}" data-episode="${entry.episode || ''}" tabindex="0" role="button" aria-label="Continue playing ${safeTitle}${epLabel}">
-        <button class="continue-remove" data-remove-id="${entry.id}" data-remove-type="${entry.type}" data-remove-season="${entry.season || ''}" data-remove-episode="${entry.episode || ''}" title="Remove from list" aria-label="Remove ${safeTitle} from list">×</button>
+        <article class="continue-card" data-id="${entry.id}" data-type="${entry.type}" data-title="${safeTitle}" data-poster="${safePoster}" data-year="${escapeHtml(entry.year)}" data-season="${escapeHtml(entry.season || '')}" data-episode="${escapeHtml(entry.episode || '')}" tabindex="0" role="button" aria-label="Continue playing ${safeTitle}${epLabel}">
+        <button class="continue-remove" data-remove-id="${entry.id}" data-remove-type="${entry.type}" data-remove-season="${escapeHtml(entry.season || '')}" data-remove-episode="${escapeHtml(entry.episode || '')}" title="Remove from list" aria-label="Remove ${safeTitle} from list">×</button>
         <img src="${poster}" alt="${safeTitle}" loading="lazy" decoding="async" />
         <div class="info">
         <div class="title">${safeTitle}</div>

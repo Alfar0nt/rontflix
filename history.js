@@ -29,14 +29,15 @@ async function loadHistory() {
         const items = (res?.items || []).slice(0, 20);
 
         container.innerHTML = items.map(row => {
-            const poster = row.poster_path ? `${IMG_BASE}${row.poster_path}` : POSTER_PLACEHOLDER;
+            const safePoster = escapeHtml(row.poster_path || '');
             const safeTitle = escapeHtml(row.title);
             const typeLabel = row.media_type === 'tv' ? 'TV' : 'Movie';
-            const epLabel = row.season ? ` • S${row.season}E${row.episode}` : '';
+            const epLabel = row.season ? ` • S${escapeHtml(row.season)}E${escapeHtml(row.episode)}` : '';
             const played = row.played_at ? new Date(row.played_at * 1000).toLocaleDateString() : '';
+            const poster = safePoster ? `${IMG_BASE}${safePoster}` : POSTER_PLACEHOLDER;
 
             return `
-            <article class="continue-card history-card" data-id="${row.tmdb_id}" data-type="${row.media_type}" data-title="${safeTitle}" data-poster="${row.poster_path || ''}" data-season="${row.season || ''}" data-episode="${row.episode || ''}" tabindex="0" role="button" aria-label="Watch ${safeTitle}${epLabel}">
+            <article class="continue-card history-card" data-id="${row.tmdb_id}" data-type="${row.media_type}" data-title="${safeTitle}" data-poster="${safePoster}" data-season="${escapeHtml(row.season || '')}" data-episode="${escapeHtml(row.episode || '')}" tabindex="0" role="button" aria-label="Watch ${safeTitle}${epLabel}">
             <img src="${poster}" alt="${safeTitle}" loading="lazy" decoding="async" />
             <div class="info">
             <div class="title">${safeTitle}</div>

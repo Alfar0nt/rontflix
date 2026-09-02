@@ -1,9 +1,10 @@
 // ============================================
 // CONFIGURATION
 // ============================================
-// IMPORTANT: Replace with your actual TMDB API key
-const TMDB_API_KEY = 'c3d81bd297b16637076c17d7d3cd8a79';
-const TMDB_BASE = 'https://api.themoviedb.org/3';
+// The TMDB API key is NOT shipped to the browser. It lives server-side only:
+// the frontend calls the /api/tmdb Pages Function proxy, which injects the key
+// from a wrangler secret (TMDB_API_KEY). See functions/api/tmdb.js.
+const TMDB_BASE = '/api/tmdb'; // local Pages Function proxy (backend injects key)
 const IMG_BASE = 'https://image.tmdb.org/t/p/w342';
 const IMG_BASE_SMALL = 'https://image.tmdb.org/t/p/w200';
 const POSTER_PLACEHOLDER = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="300" viewBox="0 0 200 300"%3E%3Crect width="200" height="300" fill="%23222"/%3E%3Ctext x="100" y="150" font-family="sans-serif" font-size="16" fill="%23666" text-anchor="middle"%3ENo Image%3C/text%3E%3C/svg%3E';

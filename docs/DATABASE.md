@@ -1,5 +1,17 @@
 # Database Implementation Guide — Cloudflare D1 + Pages Functions
 
+## Access control & RLS-equivalent (D1)
+
+D1 is a serverless SQLite reached **only** through Pages Functions code — it has no
+network endpoint and no anon-key/RLS policy engine (unlike Supabase/Firebase).
+Access control is therefore enforced in code: every per-user query pools the
+`user_id` from `context.data.user` (set in `_middleware.js` from the session
+token). The client can never supply the `user_id` used as the scoping key.
+
+> When migrating to Supabase (see `docs/migration-deployement.md`), you MUST
+> enable **RLS on every table** with explicit `auth.uid()` policies. D1's
+> server-side scoping does not carry over automatically.
+
 This project is hosted on **Cloudflare Pages** (static hosting). To add authentication, a watchlist, and persisted per-user state, we use **Cloudflare Pages Functions** (serverless Workers) plus **Cloudflare D1** (serverless SQLite). Everything stays within the Cloudflare platform already hosting this project.
 
 > **Why this stack?** Cloudflare Pages only serves static files — it cannot run a long-lived Express/local-auth server or write a SQLite file to disk. D1 is Cloudflare's built-in serverless SQLite, and Pages Functions give you API endpoints without a separate server.
@@ -60,7 +72,8 @@ rontflix/
 │   ├── 0002_auth_attempts.sql        # rate-limit table
 │   ├── 0003_history_unique.sql       # watch_history unique index
 │   ├── 0004_continue_unique.sql      # continue_watching unique index
-│   └── 0005_avatar.sql               # users.avatar_url (profile avatar)
+│   ├── 0005_avatar.sql               # users.avatar_url (profile avatar)
+│   └── 0006_ip_rate_limit.sql        # per-IP rate-limit table (login/register)
 ├── index.html
 ├── app.js
 ├── ... (existing static files)
@@ -628,6 +641,7 @@ Status as of **Phase 6 (v0.0.16)**.
 - [x] Passwords hashed with PBKDF2 — never plaintext, never reversible
 - [x] httpOnly + Secure + SameSite cookies for sessions (`Secure` only over HTTPS)
 - [x] Rate-limit login/register (`auth_attempts`, 5-fail lockout → 429)
+- [x] Per-IP rate-limit login/register (`ip_attempts`, migration `0006`, keyed on `CF-Connecting-IP` — not spoofable by clients)
 - [x] Validate + sanitize all inputs server-side — all endpoints use `functions/_http.js` helpers (`MEDIA_TYPES`, `intOr`, `clampNum`, `s`); DB access wrapped in try/catch returning consistent JSON 500s
 - [x] Scope every query by `user_id` (authz) — verified user isolation end-to-end
 - [x] No secrets in client code (session handled by httpOnly cookie; D1 binding is server-side only)

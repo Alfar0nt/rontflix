@@ -14,6 +14,26 @@ Other future work (pending UI features + remaining phases) is tracked in **`docs
 
 ---
 
+## [0.0.20] - 2026-09-02
+
+Security audit & hardening before public launch (see `security/AUDIT_SUMMARY.md`). No CRITICAL issues; multiple hardening fixes landed.
+
+### Security — added
+- **TMDB key removed from the browser bundle.** `config.js` no longer hardcodes the key; a new `functions/api/tmdb.js` Pages Function proxies TMDB requests and injects the key from the `TMDB_API_KEY` secret server-side (`wrangler pages secret put TMDB_API_KEY`; local via git-ignored `.dev.vars`). The proxy path is allow-listed (SSRF-safe; rejects cloud-metadata/absolute paths).
+- **Security headers on all responses** via a single global middleware: `Content-Security-Policy` (self + TMDB/Viduki/Google Fonts), `Strict-Transport-Security`, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy` — plus a Cloudflare `_headers` file for static assets.
+- **CORS allowlist** replaced the wildcard `Access-Control-Allow-Origin: *` (preflight + responses); only allow-listed origins are reflected, never a wildcard.
+- **Global error catch** in the middleware: unhandled exceptions return a generic 500; details logged server-side.
+- **Per-IP rate limiting** on login/register (`functions/_rateLimit.js`, migration `0006`, `ip_attempts` table) keyed on Cloudflare's `CF-Connecting-IP` (not spoofable by clients); per-IP + per-email lockouts work independently, same 5-fail → 15-min behavior.
+- **Password hashing hardened** (`_password.js`): versioned `v1:<iterations>:<salt>:<hash>` format, work factor raised from 100k → **310k** iterations, legacy hashes still verify, and `login.js` **transparently rehashes** weak/legacy hashes on successful login.
+
+### Security — fixed
+- **XSS (episodes.js):** removed an unescaped `${err.message}` interpolation in the episode-modal error branch; poster path / data attributes now escaped (`escapeHtml`) across `ui.js`, `watchlist.js`, `history.js`, `continue.js` for defense-in-depth.
+
+### Verified
+- Local e2e (`wrangler pages dev`): register/login/logout, session cookie `HttpOnly; SameSite=Lax`, 401 on protected routes for guests, per-user access isolation, rate limit 429 after 5 failures, TMDB proxy 200 + SSRF rejected 400, all five security headers present, password hash `v1:310000:` + legacy migration, `pnpm audit` clean.
+
+---
+
 ## [0.0.19] - 2026-09-02
 
 Continue Watching is now **server-side (D1) only**, tied to the signed-in account — it is no longer persisted to localStorage on the device. It appears when a user is signed in and disappears on logout.

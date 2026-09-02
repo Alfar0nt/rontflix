@@ -16,4 +16,9 @@ node_modules/
 # Local environment
 .env
 .env.*
+.dev.vars
 .wrangler/state/
+
+# Private security audit artifacts (only the repo owner should see these)
+security/
+vibe-check/

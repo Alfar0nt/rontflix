@@ -96,8 +96,9 @@ function mediaCardHTML(item) {
 
     let img = `<img src="${POSTER_PLACEHOLDER}" alt="${safeTitle}" loading="lazy" decoding="async" />`;
     if (item.poster_path) {
-        img = `<img src="${IMG_BASE}${item.poster_path}"
-        srcset="${IMG_BASE_SMALL}${item.poster_path} 200w, ${IMG_BASE}${item.poster_path} 342w"
+        const safePoster = escapeHtml(item.poster_path);
+        img = `<img src="${IMG_BASE}${safePoster}"
+        srcset="${IMG_BASE_SMALL}${safePoster} 200w, ${IMG_BASE}${safePoster} 342w"
         sizes="(max-width: 480px) 150px, (max-width: 768px) 170px, 180px"
         alt="${safeTitle}" loading="lazy" decoding="async" />`;
     }
@@ -107,7 +108,7 @@ function mediaCardHTML(item) {
         : '';
 
     return `
-    <article class="movie-card" data-id="${item.id}" data-type="${item.media_type}" data-title="${safeTitle}" data-poster="${item.poster_path || ''}" data-year="${year}" tabindex="0" role="button" aria-label="Play ${safeTitle} (${year})">
+    <article class="movie-card" data-id="${item.id}" data-type="${item.media_type}" data-title="${safeTitle}" data-poster="${escapeHtml(item.poster_path || '')}" data-year="${escapeHtml(year)}" tabindex="0" role="button" aria-label="Play ${safeTitle} (${escapeHtml(year)})">
     ${watchBtn}
     ${img}
     <div class="info">
