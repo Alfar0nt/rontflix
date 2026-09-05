@@ -10,6 +10,9 @@ Small, client-side-only enhancements. They do not require a backend.
 
 - [ ] **Trending hero banner** — backdrop image + play button, top of homepage
 - [ ] **"Recently Added" / "Upcoming" row** — alongside existing recommendation rows
+- [ ] **Next/Previous episode navigation** — when watching a TV show or anime, allow the user to jump directly to the next or previous episode from the player
+- [ ] **Dedicated title detail page** — clicking a movie or TV show opens a full detail page (instead of going straight to the video player) with the player, rating, and similar title recommendations
+- [ ] **Hide homepage rows while searching** — when the user is searching, hide the "Continue Watching" and "My Watchlist" rows so search results display cleanly instead of appearing beneath them
 - [ ] **Genre filters / sort dropdown** — on search results (by year, rating, popularity)
 - [ ] **Full keyboard shortcuts (arrows)** — arrow keys to move between cards (currently Enter/Space/Esc only)
 - [ ] **Dark/light theme toggle** — persisted in localStorage
