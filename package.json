@@ -1,6 +1,6 @@
 {
   "name": "rontflix",
-  "version": "0.0.20",
+  "version": "0.0.21",
   "private": true,
   "description": "Personal movie/TV streaming app (vanilla HTML/CSS/JS) hosted on Cloudflare Pages with D1 backend",
   "scripts": {

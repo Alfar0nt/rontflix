@@ -93,9 +93,35 @@ function updateLoadMore() {
 // ============================================
 // EVENT LISTENERS
 // ============================================
+// Tracks whether the home rows are hidden because the user is searching.
+let homeSearching = false;
+
+// While the user is searching, hide the homepage rows (Continue Watching,
+// My Watchlist, Recommendations) so the results render cleanly on their own.
 function updateHomeVisibility() {
     const searching = searchInput.value.trim().length > 0 || document.activeElement === searchInput;
-    recommendationsContainer.style.display = searching ? 'none' : '';
+    if (searching === homeSearching) {
+        if (searching) {
+            continueSection.style.display = 'none';
+            watchlistSection.style.display = 'none';
+            recommendationsContainer.style.display = 'none';
+        }
+        return;
+    }
+    homeSearching = searching;
+
+    if (searching) {
+        continueSection.style.display = 'none';
+        watchlistSection.style.display = 'none';
+        recommendationsContainer.style.display = 'none';
+        setStatus(''); // clear any lingering notification (e.g. "Now playing...")
+    } else {
+        // Re-render to recompute each row's natural state (which depends on
+        // data/auth) instead of restoring a possibly-stale cached value.
+        if (typeof renderContinueWatching === 'function') renderContinueWatching();
+        if (typeof renderWatchlistRow === 'function') renderWatchlistRow();
+        recommendationsContainer.style.display = '';
+    }
 }
 
 searchInput.addEventListener('focus', updateHomeVisibility);

@@ -10,12 +10,101 @@ Small, client-side-only enhancements. They do not require a backend.
 
 - [ ] **Trending hero banner** — backdrop image + play button, top of homepage
 - [ ] **"Recently Added" / "Upcoming" row** — alongside existing recommendation rows
-- [ ] **Next/Previous episode navigation** — when watching a TV show or anime, allow the user to jump directly to the next or previous episode from the player
-- [ ] **Dedicated title detail page** — clicking a movie or TV show opens a full detail page (instead of going straight to the video player) with the player, rating, and similar title recommendations
-- [ ] **Hide homepage rows while searching** — when the user is searching, hide the "Continue Watching" and "My Watchlist" rows so search results display cleanly instead of appearing beneath them
+- [x] **Next/Previous episode navigation** — when watching a TV show or anime, allow the user to jump directly to the next or previous episode from the player
+- [x] **Dedicated title detail page** — clicking a movie or TV show opens a full detail page (instead of going straight to the video player) with the player, rating, and similar title recommendations
+- [x] **Hide homepage rows while searching** — when the user is searching, hide the "Continue Watching" and "My Watchlist" rows so search results display cleanly instead of appearing beneath them
 - [ ] **Genre filters / sort dropdown** — on search results (by year, rating, popularity)
 - [ ] **Full keyboard shortcuts (arrows)** — arrow keys to move between cards (currently Enter/Space/Esc only)
 - [ ] **Dark/light theme toggle** — persisted in localStorage
+
+---
+
+## Multi-API Provider Support (Viduki + 1Embed + 111Movies) — PLANNED (do NOT implement yet)
+
+> **Status:** Planning only. This section is the comprehensive source of truth for adding multiple streaming providers. Do **not** implement until explicitly approved. When implemented, move this into a versioned changelog entry and update `docs/CHANGELOGS.md`.
+>
+> **Goal:** Today the player only streams from **Viduki** (4 numbered sub-servers: API 1–4). We want the user to be able to switch between **Viduki**, **1Embed**, and **111Movies** as separate streaming sources.
+
+### Overview — Feasibility & Scope
+
+- **This is a 100% client-side change.** No backend/D1/Cloudflare reconfiguration is required. See "Backend/D1 impact" below.
+- All three providers accept the **TMDB numeric id** already present in `currentMedia.id`, so **no IMDb-id conversion is needed** for the happy path.
+  - Viduki: uses TMDB id. Movie `https://viduki.net/{api}/movie/{id}`, TV `https://viduki.net/{api}/tv/{id}/{season}/{episode}`.
+  - 1Embed: uses TMDB id. Movie `https://1embed.cc/embed/movie/{id}`, TV `https://1embed.cc/embed/tv/{id}/{season}/{episode}`.
+  - 111Movies: accepts TMDB id **or** IMDb id (`tt...`). Movie `https://111movies.net/movie/{id}`, TV `https://111movies.net/tv/{id}/{season}/{episode}`.
+- Concept remap: the current "API 1–4" are 4 Viduki *variants*. We re-model into a flat list of **sources** (provider + variant flattened), because 1Embed and 111Movies are single embeds each.
+
+### Provider URL reference
+
+| Provider | Movie URL | TV URL | Notes |
+|---|---|---|---|
+| Viduki | `https://viduki.net/{api}/movie/{id}` | `https://viduki.net/{api}/tv/{id}/{s}/{e}` | 4 variants, `{api}` = 1–4 |
+| 1Embed | `https://1embed.cc/embed/movie/{id}` | `https://1embed.cc/embed/tv/{id}/{s}/{e}` | Single embed |
+| 111Movies | `https://111movies.net/movie/{id}` | `https://111movies.net/tv/{id}/{s}/{e}` | Accepts TMDB or IMDb id (`tt...`) |
+
+### Key design decision — source registry
+
+- Introduce a **source registry** describing every selectable source: `key`, `label`, and URL-building route.
+- Proposed flat `SOURCES` array in `config.js` (order defines Prev/Next stepping order):
+
+```js
+const SOURCES = [
+  { key: 'viduki-1',  label: 'Viduki 1 (Multi Server)' },
+  { key: 'viduki-2',  label: 'Viduki 2 (Multi Language)' },
+  { key: 'viduki-3',  label: 'Viduki 3 (Multi Embeds)' },
+  { key: 'viduki-4',  label: 'Viduki 4 (Premium Embeds)' },
+  { key: '1embed',    label: '1Embed' },
+  { key: '111movies', label: '111Movies' },
+];
+```
+
+### Implementation steps (frontend only)
+
+1. **`config.js`** — add the `SOURCES` registry (keys + labels). All provider logic stays out of HTML.
+2. **`tmdb.js`** — replace/replace-augment `vidukiUrl(type, id, season, episode, api)` with a dispatcher `buildStreamUrl(sourceKey, type, id, season, episode)` that returns the URL per source key. Keep `vidukiUrl` or fold it in.
+3. **`index.html`** — rewrite the `<select id="apiSelect">` options from the `SOURCES` registry (render every source; not hardcoded). Update the `aria-label` from "Select Viduki API variant" to a provider-neutral label. Player control labels already say "API N" — update `popupApiInfo`/status to show the provider/source label (e.g. "1Embed", "111Movies").
+4. **`player.js`** — change all API-variant handling to source-key handling:
+   - `openPlayer`: call `buildStreamUrl(selectedSourceKey, ...)` instead of `vidukiUrl(type, id, season, episode, apiVersion)`.
+   - `rebuildPlayerSrc`, `switchApi`, `popupApiInfo`, `setStatus("Now playing: … using …")` — read the current **source key**, not a variant number.
+   - `switchApi(direction)` iterates through the flat `SOURCES` array in order, wrapping around (Viduki→1Embed→111Movies→back to Viduki-1).
+5. **`app.js`** — persistence + load migration:
+   - Store the **source key** (string) in `localStorage` under `API_SELECT_KEY` (`vidukinet-SelectedApi`) instead of a number.
+   - On load, migrate legacy stored values: `"1"`/`"2"`/`"3"`/`"4"` → `"viduki-1"`…`"viduki-4"` so existing users keep their Viduki variant.
+   - Generalize the `viduki:all-servers-failed` postMessage handler to advance to the **next source** in `SOURCES` (auto-failover can now switch providers, not just Viduki variants).
+
+### Backend / D1 / Cloudflare impact — NONE (verified)
+
+- **D1 schema** (`migrations/0001_init.sql`): tables `watchlist`, `continue_watching`, `watch_history` store only `tmdb_id` + `media_type` (+ season/episode). **No provider/source/variant column exists or is needed.**
+- **Pages Functions endpoints** (`functions/api/continue.js`, `watchlist.js`, `history.js`, etc.): only read/write `tmdb_id` + `media_type`; they never reference the streaming source. **No endpoint changes.**
+- **No new migrations, no new endpoints, no wrangler/DB reconfiguration.**
+
+### Non-DB concerns (may need edits, not DB)
+
+- **CSP allow-list:** `functions/_middleware.js` (Content-Security-Policy `frame-src`/`child-src`) and `_headers` currently allow specific origins. Add `https://1embed.cc` and `https://111movies.net` so the new iframes are not blocked by the browser.
+- **postMessage / progress caveat:** `app.js` only trusts the `viduki.net` origin for progress (`MEDIA_DATA`) and `viduki:all-servers-failed`. 1Embed and 111Movies do **not** emit these postMessages, so:
+  - **Continue-watching progress will not update on non-Viduki providers.**
+  - Must degrade gracefully (no crash, no console errors). `flushProgress` in `app.js` already guards on `currentMedia`; ensure non-Viduki src just never produces progress.
+  - Decision (recommended): accept graceful degradation — only Viduki tracks progress. Optionally show a subtle status hint that progress isn't tracked on non-Viduki sources (not required).
+- **Referrer/headers:** no other server-side change expected.
+
+### Files touched (implementation)
+
+- `config.js` (source registry)
+- `tmdb.js` (URL builder dispatcher)
+- `index.html` (dropdown options + labels)
+- `player.js` (source-key switching/labels/nav)
+- `app.js` (persistence + legacy migration + auto-failover)
+- `style.css` (only if any control styling/label widths change — optional)
+- `functions/_middleware.js` + `_headers` (CSP allow-list for 1embed/111movies) — if approvals confirm
+- `docs/CHANGELOGS.md` (new version entry), `docs/ROADMAP.md` (mark done), `AGENTS.md` (module map if a new module is introduced)
+
+### Verification checklist (when implemented)
+
+- `node --check` on all modified JS.
+- Serve via `wrangler pages dev`; confirm `1embed.cc` and `111movies.net` are reflected in the served CSP headers.
+- jsdom smoke test: dropdown renders all 6 sources; `buildStreamUrl` returns correct URL per source for movie + tv; `switchApi` wraps through all sources; legacy `localStorage` `"3"` migrates to `viduki-3`.
+- Manual: select 1Embed → play a movie → iframe src points to `1embed.cc`; play a TV episode on 111Movies → src points to `111movies.net`; verify no progress postMessages cause errors on non-Viduki.
+- Confirm Viduki 1–4 still behave as before (existing users unaffected).
 
 ---
 

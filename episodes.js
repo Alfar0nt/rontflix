@@ -103,8 +103,28 @@ function buildModalContent(show) {
 }
 
 async function renderEpisodesFromShow(tmdbId, seasonNumber) {
-    const container = document.getElementById('episodeContainer');
+    await renderEpisodeGrid(tmdbId, seasonNumber, document.getElementById('episodeContainer'), {
+        showName: currentShowData?.name || 'TV Show',
+        seasonSelectorRoot: document.getElementById('seasonSelector'),
+        onPlay: (season, episode) => {
+            const title = `${currentShowData?.name || 'TV Show'} - S${season}E${episode}`;
+            const showPoster = currentShowData?.poster_path || '';
+            const showYear = currentShowData?.first_air_date ? currentShowData.first_air_date.substring(0, 4) : '';
+            closeModal();
+            openPlayer({ id: tmdbId, type: 'tv', title, season, episode, poster_path: showPoster, year: showYear });
+        }
+    });
+}
+
+// Reusable TV season/episode grid renderer. Used by the episode modal and the
+// title detail view. Renders the requested season's episodes into `container`
+// and wires selection to `opts.onPlay(season, episode)`.
+async function renderEpisodeGrid(tmdbId, seasonNumber, container, opts = {}) {
     if (!container) return;
+
+    const showName = opts.showName || 'TV Show';
+    const onPlay = opts.onPlay || (() => {});
+    const seasonRoot = opts.seasonSelectorRoot || document;
 
     container.innerHTML = '<div class="no-episodes">Loading episodes...</div>';
     container.setAttribute('aria-busy', 'true');
@@ -151,28 +171,18 @@ async function renderEpisodesFromShow(tmdbId, seasonNumber) {
 
         container.innerHTML = `<div class="episode-grid">${episodesHtml}</div>`;
 
-        function playEpisode(item) {
-            const season = item.dataset.season;
-            const episode = item.dataset.episode;
-            const title = `${currentShowData?.name || 'TV Show'} - S${season}E${episode}`;
-            const showPoster = currentShowData?.poster_path || '';
-            const showYear = currentShowData?.first_air_date ? currentShowData.first_air_date.substring(0, 4) : '';
-            closeModal();
-            openPlayer({ id: tmdbId, type: 'tv', title, season, episode, poster_path: showPoster, year: showYear });
-        }
-
-        document.querySelectorAll('.episode-item').forEach(item => {
-            item.addEventListener('click', () => playEpisode(item));
+        container.querySelectorAll('.episode-item').forEach(item => {
+            item.addEventListener('click', () => onPlay(parseInt(item.dataset.season), parseInt(item.dataset.episode)));
             item.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
-                    playEpisode(item);
+                    onPlay(parseInt(item.dataset.season), parseInt(item.dataset.episode));
                 }
             });
         });
 
-        // Update active season button
-        document.querySelectorAll('.season-btn').forEach(btn => {
+        // Update active season button within the provided scope
+        seasonRoot.querySelectorAll('.season-btn').forEach(btn => {
             btn.classList.toggle('active', parseInt(btn.dataset.season) === seasonNumber);
             btn.setAttribute('aria-pressed', btn.classList.contains('active') ? 'true' : 'false');
         });
@@ -180,14 +190,10 @@ async function renderEpisodesFromShow(tmdbId, seasonNumber) {
         container.setAttribute('aria-busy', 'false');
 
     } catch (err) {
-        // If the season was not found, fall back to the show's season list
-        if (err.status === 404 && currentShowData && currentShowData.seasons) {
-            const season = currentShowData.seasons.find(s => s.season_number === seasonNumber);
-            if (season && season.episode_count === 0) {
-                container.innerHTML = '<div class="no-episodes">No episodes available for this season.</div>';
-                container.setAttribute('aria-busy', 'false');
-                return;
-            }
+        if (err.status === 404) {
+            container.innerHTML = '<div class="no-episodes">No episodes available for this season.</div>';
+            container.setAttribute('aria-busy', 'false');
+            return;
         }
         console.error('Error loading episodes:', err);
         container.innerHTML = `<div class="no-episodes">Error loading episodes. Try selecting a different season.</div>`;

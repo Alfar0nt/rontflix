@@ -26,6 +26,8 @@ const closePlayerBtn = document.getElementById('closePlayer');
 const popupApiInfo = document.getElementById('popupApiInfo');
 const popupApiPrev = document.getElementById('popupApiPrev');
 const popupApiNext = document.getElementById('popupApiNext');
+const playerPrevEp = document.getElementById('playerPrevEp');
+const playerNextEp = document.getElementById('playerNextEp');
 
 const modal = document.getElementById('episodeModal');
 const modalBody = document.getElementById('modalBody');
@@ -35,6 +37,11 @@ const authArea = document.getElementById('authArea');
 const authModal = document.getElementById('authModal');
 const authBody = document.getElementById('authBody');
 const authClose = document.getElementById('authClose');
+
+const detailView = document.getElementById('detailView');
+const detailBody = document.getElementById('detailBody');
+const detailTitle = document.getElementById('detailTitle');
+const detailCloseBtn = document.getElementById('detailClose');
 
 // ============================================
 // HELPERS
@@ -50,6 +57,11 @@ function escapeHtml(str) {
 }
 
 function setStatus(text, type = '') {
+    if (!text) {
+        statusMsg.style.display = 'none';
+        return;
+    }
+    statusMsg.style.display = '';
     statusMsg.textContent = text;
     statusMsg.className = 'info-msg' + (type ? ' ' + type : '');
 }
@@ -137,11 +149,7 @@ function playFromCard(card) {
     const posterPath = card.dataset.poster || '';
     const year = card.dataset.year || '';
 
-    if (type === 'tv') {
-        openEpisodePicker(id, title, posterPath, year);
-    } else {
-        openPlayer({ id, type: 'movie', title, poster_path: posterPath, year });
-    }
+    openDetailView(id, type, title, posterPath, year);
 }
 
 function attachCardListeners(container) {

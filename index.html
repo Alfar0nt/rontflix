@@ -81,6 +81,19 @@
     </main>
   </div>
 
+  <!-- ===== TITLE DETAIL VIEW (page-like overlay) ===== -->
+  <div id="detailView" class="detail-view" role="dialog" aria-modal="true" aria-label="Title details">
+    <div class="detail-content">
+      <div class="detail-header">
+        <span id="detailTitle" class="detail-title">Details</span>
+        <button id="detailClose" class="player-close-btn" aria-label="Close details" type="button">✕</button>
+      </div>
+      <div class="detail-body" id="detailBody">
+        <!-- Populated by detail.js -->
+      </div>
+    </div>
+  </div>
+
   <!-- ===== POPUP PLAYER (Fullscreen overlay) ===== -->
   <div id="playerPopup" class="player-popup" role="dialog" aria-modal="true" aria-label="Video player">
     <div class="player-popup-content">
@@ -96,6 +109,9 @@
         <span id="playerRuntime" class="player-runtime"></span>
       </div>
       <div class="player-controls">
+        <button type="button" id="playerPrevEp" class="popup-ep-btn" aria-label="Previous episode">&#9664; Prev Ep</button>
+        <button type="button" id="playerNextEp" class="popup-ep-btn" aria-label="Next episode">Next Ep &#9654;</button>
+        <span class="player-controls-sep" aria-hidden="true"></span>
         <button type="button" id="popupApiPrev" class="popup-api-btn" aria-label="Previous API">&#9664; Prev API</button>
         <span id="popupApiInfo" class="popup-api-info" aria-live="polite">API 1</span>
         <button type="button" id="popupApiNext" class="popup-api-btn" aria-label="Next API">Next API &#9654;</button>
@@ -143,6 +159,7 @@
   <script src="continue.js"></script>
   <script src="player.js"></script>
   <script src="episodes.js"></script>
+  <script src="detail.js"></script>
   <script src="search.js"></script>
   <script src="recommendations.js"></script>
   <script src="app.js"></script>

@@ -14,6 +14,39 @@ Other future work (pending UI features + remaining phases) is tracked in **`docs
 
 ---
 
+## [0.0.21] - 2026-09-05
+
+Added next/previous episode navigation in the player, a dedicated title detail view, and cleaner search results (homepage rows hide while searching).
+
+### Added
+- **Prev Ep / Next Ep buttons** in the player controls (`index.html`, `player.js`) — when a TV show or anime episode is playing, the user can jump straight to the previous or next episode without closing the player.
+  - `playEpisodeNav(direction)` in `player.js` fetches the current season's episode list to determine the boundaries, then plays the adjacent episode; crossing a season boundary goes to the previous season's last episode or the next season's first episode automatically.
+  - The buttons (and a divider separating them from the API controls) appear only while a TV episode is playing; they are hidden for movies and for the initial empty state.
+  - During navigation the buttons are disabled to prevent double-taps; a loading status message is shown while the adjacent episode loads. Reaching the very first or very last episode shows an informative status message instead of an error.
+- **Dedicated title detail view** (`detail.js`, `index.html`) — clicking any movie or TV card now opens a page-like overlay instead of going straight to the video player:
+  - **Hero** — poster, title, year, type, rating (★), runtime, genres, overview, and a **Play** button (plus a watchlist toggle for signed-in users); a backdrop image fades in as the hero background when available.
+  - **TV shows / anime** — an inline **season selector + episode grid** (reusing the shared episode renderer with per-episode progress badges); clicking an episode or the Play button launches the player for that episode.
+  - **Similar Titles** row — TMDB-driven (`/{type}/{id}/similar`), rendered as standard cards that open their own detail view when clicked.
+  - Full-screen overlay with keyboard access (ESC / close button close it; focus returns to the opener) and mobile-first responsive layout.
+- **Hide homepage rows while searching** (`search.js`) — while the user is searching (input focused or has text), the **Continue Watching**, **My Watchlist**, and recommendation rows hide so results render cleanly; clearing the input restores each row to its natural state.
+
+### Changed
+- `ui.js` — added DOM refs for the new `#playerPrevEp` / `#playerNextEp` buttons and the detail view (`#detailView`, `#detailBody`, `#detailTitle`, `#detailClose`); `playFromCard()` now routes every card click (search, recommendations, watchlist, history) through `openDetailView()` instead of directly to the player. `setStatus('')` now hides the message element entirely (no empty bordered box).
+- `episodes.js` — refactored the modal's episode rendering into a reusable `renderEpisodeGrid()` so the modal and the detail view share the same fetching, progress badges, and interaction wiring.
+- `player.js` — `openPlayer()` now calls `updateEpisodeNavButtons()` to sync button visibility on every play; `closePlayer()` resets the nav state.
+- `search.js` — `updateHomeVisibility()` now also hides/shows Continue Watching and My Watchlist (previously recommendations only); it re-renders the rows on restore so their state reflects the latest data/auth. It also clears the lingering status toast (e.g. "Now playing: …") as soon as the user starts searching.
+- Since cards now open the detail view, the standalone episode-selection modal is no longer triggered from cards (its code remains as a fallback).
+- `AGENTS.md` — documented the `nvm use 24.20.0` Node prerequisite and the `pnpm` dev scripts; updated the script order (adds `detail.js`) and module map to match.
+
+### Verified
+- Local smoke test (jsdom against `wrangler pages dev`):
+  - Player: episode nav buttons appear for TV episodes, hidden otherwise; clicking an episode from the detail view closes it and opens the player popup.
+  - Detail view: movie view renders similar titles, play button and rating; TV view renders the season selector and episode grid with working click-to-play.
+  - Search: focusing/searching hides Continue Watching, My Watchlist and Recommendations; clearing the input restores each row's natural state (PASS, no runtime errors). The stale status toast ("Now playing: …") is hidden as soon as the user focuses the search box, and non-search status messages still show normally.
+- `node --check` passes on all modified JS files (`player.js`, `ui.js`, `episodes.js`, `detail.js`, `search.js`); every new DOM id resolves against `index.html`.
+
+---
+
 ## [0.0.20] - 2026-09-02
 
 Security audit & hardening before public launch (see `security/AUDIT_SUMMARY.md`). No CRITICAL issues; multiple hardening fixes landed.
